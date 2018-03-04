@@ -1,8 +1,8 @@
 use man_parse::troff_tokenize::TroffToken;
 use simple_parser::token::Token;
 
-#[derive(Debug)]
-enum ManSection {
+#[derive(Debug, PartialEq)]
+pub enum ManSection {
     Unknown,
     Name,
     Synopsis,
@@ -25,14 +25,15 @@ pub struct TroffParser<'a, I>
 where
     I: Iterator<Item = &'a Token<TroffToken>>,
 {
-    section_name: String,
-    section_synopsis: String,
-    section_description: String,
-
-    current_section: ManSection,
-
     tokens: Option<I>,
     current_token: Option<&'a Token<TroffToken>>,
+    current_section: Option<ManSection>,
+
+    /// if a section was requested via '-s', store its text here
+    section_text: String,
+
+    /// if a section was requested via '-s', this is the requested section
+    parse_section: Option<ManSection>,
 }
 
 impl<'a, I> TroffParser<'a, I>
@@ -41,13 +42,20 @@ where
 {
     pub fn new() -> Self {
         TroffParser {
-            section_description: Default::default(),
-            section_synopsis: Default::default(),
-            section_name: Default::default(),
-            current_section: ManSection::Name,
+            section_text: Default::default(),
+
+            parse_section: None,
+            current_section: None,
             tokens: None,
             current_token: None,
         }
+    }
+
+    pub fn for_section(section: ManSection) -> Self {
+        println!("creating parser for section: {:?}", section);
+        let mut p = Self::new();
+        p.parse_section = Some(section);
+        p
     }
 
     pub fn parse(&mut self, tokens: I) {
@@ -59,10 +67,14 @@ where
         while let Some(cur_tok) = self.current_token() {
             println!("parsing token: {:?}", cur_tok);
 
+            if self.parse_section.is_some() && self.parse_section == self.current_section {
+                self.section_text
+                    .push_str(&self.current_token.unwrap().value);
+            }
+
             if cur_tok.class == TroffToken::Macro && cur_tok.value == ".SH" {
                 self.parse_sh();
             } else {
-                //self.parse_word();
                 self.consume();
             }
         }
@@ -74,12 +86,14 @@ where
 
         // next token must be a TextWord, which is the SH argument
         self.current_section = match self.current_token() {
-            Some(token) if token.value == "NAME" => ManSection::Name,
-            Some(token) if token.value == "SYNOPSIS" => ManSection::Synopsis,
-            Some(token) if token.value == "DESCRIPTION" => ManSection::Description,
-            Some(token) if token.value == "OPTIONS" => ManSection::Options,
-            _ => ManSection::Unknown,
+            Some(token) if token.value == "NAME" => Some(ManSection::Name),
+            Some(token) if token.value == "SYNOPSIS" => Some(ManSection::Synopsis),
+            Some(token) if token.value == "DESCRIPTION" => Some(ManSection::Description),
+            Some(token) if token.value == "OPTIONS" => Some(ManSection::Options),
+            _ => Some(ManSection::Unknown),
         };
+
+        self.parse_word();
 
         println!("Set section to: {:?}", self.current_section);
     }
@@ -104,5 +118,9 @@ where
 
     fn current_token(&self) -> Option<I::Item> {
         self.current_token
+    }
+
+    pub fn section_text(&self) -> &str {
+        &self.section_text
     }
 }

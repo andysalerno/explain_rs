@@ -7,18 +7,26 @@ use std::io::Read;
 use std::process::Command;
 use man_parse::troff_parser::TroffParser;
 
+struct ExplainArgs {
+    command_name: String,
+    command_args: Vec<String>,
+
+    explain_args: Vec<String>,
+}
+
 fn main() {
-    let args: Vec<String> = env::args().collect();
+    let args = argparse();
 
-    if args.len() < 2 {
-        print_usage();
-        return;
-    }
+    println!("executing for program named: {}", args.command_name);
 
-    let command_name = &args[1];
-    println!("executing for program named: {}", &command_name);
+    let section = if args.explain_args.len() >= 2 {
+        // TODO: for now, I'm saying all explain args is -s...
+        Some(&args.explain_args[1])
+    } else {
+        None
+    };
 
-    let man_path = get_manpage_path(command_name);
+    let man_path = get_manpage_path(&args.command_name);
     println!("found manpath: [{}]", &man_path);
 
     let man_text = if is_gzipped(&man_path) {
@@ -35,10 +43,59 @@ fn main() {
     let classifier = man_parse::troff_tokenize::TroffClassifier {};
     let tokenized = simple_parser::tokenizer::tokenize(&man_text, &classifier);
 
-    let mut parser = TroffParser::new();
+    let mut parser = match section {
+        None => TroffParser::new(),
+        // TODO: for now, I'm saying every -s argument is for Synopsis...
+        Some(s) => TroffParser::for_section(man_parse::troff_parser::ManSection::Synopsis),
+    };
+
     parser.parse(tokenized.iter());
 
-    // println!("{:?}", &tokenized);
+    println!("section text:\n{}", parser.section_text());
+}
+
+fn argparse() -> ExplainArgs {
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() < 2 {
+        print_usage();
+        panic!("improperly invoked");
+    }
+
+    // '--' is used to delim between args for this program,
+    // and the args to explain
+    let mut before_delim = true;
+
+    let mut result = ExplainArgs {
+        command_name: String::new(),
+        command_args: Vec::new(),
+        explain_args: Vec::new(),
+    };
+
+    for (i, arg) in args.iter().enumerate() {
+        // first arg is always the os-provided bin path
+        if i == 0 {
+            continue;
+        }
+
+        // second arg is always the requested bin to explain
+        if i == 1 {
+            result.command_name = arg.to_owned();
+        } else if before_delim {
+            if arg == "--" {
+                before_delim = false;
+                continue;
+            }
+
+            // everything before '--' is an arg to explain
+            result.command_args.push(arg.to_owned());
+        } else {
+            // everything after '--' is an arg to the 'explain' bin itself
+            result.explain_args.push(arg.to_owned());
+        }
+    }
+
+    result
 }
 
 fn get_manpage_path(program_name: &str) -> String {
