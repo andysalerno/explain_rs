@@ -69,7 +69,7 @@ where
 
             if self.parse_section.is_some() && self.parse_section == self.current_section {
                 self.section_text
-                    .push_str(&self.current_token.unwrap().value);
+                    .push_str(&Self::format_token(self.current_token.unwrap()));
             }
 
             if cur_tok.class == TroffToken::Macro && cur_tok.value == ".SH" {
@@ -96,6 +96,14 @@ where
         self.parse_word();
 
         println!("Set section to: {:?}", self.current_section);
+    }
+
+    fn format_token(token: I::Item) -> String {
+        if token.starts_line {
+            format!("\n{}", token.value)
+        } else {
+            format!(" {}", token.value)
+        }
     }
 
     fn parse_word(&mut self) {

@@ -51,7 +51,9 @@ fn main() {
 
     parser.parse(tokenized.iter());
 
-    println!("section text:\n{}", parser.section_text());
+    if section.is_some() {
+        println!("section text: {}", parser.section_text());
+    }
 }
 
 fn argparse() -> ExplainArgs {
