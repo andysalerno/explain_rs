@@ -1,0 +1,142 @@
+{"message":"unused import: `man_parse::token::Token`","code":{"code":"unused_imports","explanation":null},"level":"warning","spans":[{"file_name":"src/main.rs","byte_start":72,"byte_end":95,"line_start":6,"line_end":6,"column_start":5,"column_end":28,"is_primary":true,"text":[{"text":"use man_parse::token::Token;","highlight_start":5,"highlight_end":28}],"label":null,"suggested_replacement":null,"expansion":null}],"children":[{"message":"#[warn(unused_imports)] on by default","code":null,"level":"note","spans":[],"children":[],"rendered":null}],"rendered":"warning: unused import: `man_parse::token::Token`\n --> src/main.rs:6:5\n  |\n6 | use man_parse::token::Token;\n  |     ^^^^^^^^^^^^^^^^^^^^^^^\n  |\n  = note: #[warn(unused_imports)] on by default\n\n"}
+error: expected one of `.`, `;`, `?`, `}`, or an operator, found `content`
+  --> <stdin>:33:5
+   |
+31 |     try!(file.read_to_string(&mut content)) 
+   |                                            - expected one of `.`, `;`, `?`, `}`, or an operator here
+32 | 
+33 |     content
+   |     ^^^^^^^ unexpected token
+
+error: chained comparison operators require parentheses
+  --> <stdin>:12:14
+   |
+12 |         Token<C> {
+   |              ^^^^^
+   |
+   = help: use `::<...>` instead of `<...>` if you meant to specify type arguments
+   = help: or use `(...)` if you meant to specify fn arguments
+
+error: expected one of `!`, `(`, `::`, `;`, `<`, or `}`, found `,`
+  --> <stdin>:13:25
+   |
+13 |             class: class,
+   |                         ^ expected one of `!`, `(`, `::`, `;`, `<`, or `}` here
+
+error: expected one of `.`, `;`, `?`, or an operator, found `let`
+  --> <stdin>:56:9
+   |
+54 |         let s = "( 1 +      8)" 
+   |                                - expected one of `.`, `;`, `?`, or an operator here
+55 | 
+56 |         let classifier = TestClassifier {};
+   |         ^^^ unexpected token
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+
+error: expected pattern, found `=>`
+ --> bogofile:1:15
+  |
+1 | match word {  => () };
+  |               ^^
+

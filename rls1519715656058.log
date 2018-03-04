@@ -1,0 +1,24 @@
+error: expected one of `:`, `;`, `=`, or `@`, found `,`
+ --> <stdin>:4:21
+  |
+4 |     let program_name, arguments = user_input.split_whitespace();
+  |                     ^ expected one of `:`, `;`, `=`, or `@` here
+
+error: expected one of `:`, `;`, `=`, or `@`, found `,`
+ --> <stdin>:3:21
+  |
+3 |     let program_name, arguments = user_input.split_whitespace();
+  |                     ^ expected one of `:`, `;`, `=`, or `@` here
+
+error: expected one of `:`, `;`, `=`, or `@`, found `,`
+ --> <stdin>:4:21
+  |
+4 |     let program_name, arguments = user_input.split_whitespace();
+  |                     ^ expected one of `:`, `;`, `=`, or `@` here
+
+error: expected one of `:`, `;`, `=`, or `@`, found `,`
+ --> <stdin>:4:21
+  |
+4 |     let program_name, arguments = user_input.split_whitespace();
+  |                     ^ expected one of `:`, `;`, `=`, or `@` here
+

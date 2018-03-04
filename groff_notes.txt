@@ -1,0 +1,22 @@
+update:
+turns out '.Bl' means "bullet list"
+and '.It' means a bullet.
+
+.Bl -bullet -offset -indent -compact
+.It
+Bullet one goes here.
+.It
+Bullet two goes here.
+.El
+
+global escape sequence is '\&'
+
+[-s bytes] is produced by '.Op Fl s Ar bytes' (bytes is underlined or italic here)
+[Fl s Ar bytes] is produced by '.Op \&Fl s \&Ar bytes'
+
+idea: also show content from the 'examples' section, if they give an argument. 'explain --example cat'
+also show all parts of the 'options' section with a different argument. like 'explain --args cat'
+
+btw, 'Fl' means 'flag' and 'Ar' means 'argument'
+
+a macro is called by putting a dot '.' at the beginning of a line, followed by the two/three character macro name
