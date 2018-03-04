@@ -38,7 +38,7 @@ fn main() {
     let mut parser = TroffParser::new();
     parser.parse(tokenized.iter());
 
-    println!("{:?}", &tokenized);
+    // println!("{:?}", &tokenized);
 }
 
 fn get_manpage_path(program_name: &str) -> String {

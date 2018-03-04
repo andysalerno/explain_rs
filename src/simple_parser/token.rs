@@ -27,5 +27,5 @@ impl<C: Classification> Token<C> {
 // which is given a string word and can
 // return the classification of the Token.
 pub trait Classifier<C: Classification> {
-    fn classify(&self, word: &str) -> C;
+    fn classify(&self, word: &str, starts_line: bool) -> C;
 }

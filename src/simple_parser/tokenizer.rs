@@ -9,7 +9,7 @@ pub fn tokenize<C: Classification>(input: &str, classifier: &Classifier<C>) -> V
     for line in split_lines {
         for (i, c) in line.enumerate() {
             let starts_line = i == 0;
-            let class = classifier.classify(&c);
+            let class = classifier.classify(&c, starts_line);
             let token = Token::new(class, c.to_owned(), starts_line);
 
             result.push(token);
@@ -49,7 +49,7 @@ mod tests {
     struct TestClassifier;
 
     impl Classifier<TestToken> for TestClassifier {
-        fn classify(&self, word: &str) -> TestToken {
+        fn classify(&self, word: &str, starts_line: bool) -> TestToken {
             println!("classifying: {}", word);
 
             match word {
@@ -70,11 +70,11 @@ mod tests {
         let result = tokenizer::tokenize(s, &classifier);
 
         let expected = vec![
-            Token::new(TestToken::LParen, "(".to_owned()),
-            Token::new(TestToken::NumVal(1), "1".to_owned()),
-            Token::new(TestToken::AddOp, "+".to_owned()),
-            Token::new(TestToken::NumVal(8), "8".to_owned()),
-            Token::new(TestToken::RParen, ")".to_owned()),
+            Token::new(TestToken::LParen, "(".to_owned(), true),
+            Token::new(TestToken::NumVal(1), "1".to_owned(), false),
+            Token::new(TestToken::AddOp, "+".to_owned(), false),
+            Token::new(TestToken::NumVal(8), "8".to_owned(), false),
+            Token::new(TestToken::RParen, ")".to_owned(), false),
         ];
 
         assert!(

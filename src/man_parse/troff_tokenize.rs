@@ -2,7 +2,7 @@
 
 use simple_parser::token::{Classification, Classifier};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum TroffToken {
     Macro,
     TextWord,
@@ -14,9 +14,9 @@ impl Classification for TroffToken {}
 pub struct TroffClassifier;
 
 impl Classifier<TroffToken> for TroffClassifier {
-    fn classify(&self, word: &str) -> TroffToken {
+    fn classify(&self, word: &str, starts_line: bool) -> TroffToken {
         match word {
-            w if w.starts_with(".") => TroffToken::Macro,
+            w if w.starts_with(".") && starts_line => TroffToken::Macro,
             _ => TroffToken::TextWord,
         }
     }
