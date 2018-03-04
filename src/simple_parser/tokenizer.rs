@@ -1,18 +1,31 @@
-use man_parse::token::{Classification, Classifier, Token};
+use simple_parser::token::{Classification, Classifier, Token};
+use std::str::SplitWhitespace;
 
 pub fn tokenize<C: Classification>(input: &str, classifier: &Classifier<C>) -> Vec<Token<C>> {
     let mut result = Vec::new();
 
-    let split = input.split_whitespace();
+    let split_lines = split_lines(input);
 
-    for c in split {
-        let class = classifier.classify(&c);
-        let token = Token {
-            class: class,
-            value: c.to_owned(),
-        };
+    for line in split_lines {
+        for (i, c) in line.enumerate() {
+            let starts_line = i == 0;
+            let class = classifier.classify(&c);
+            let token = Token::new(class, c.to_owned(), starts_line);
 
-        result.push(token);
+            result.push(token);
+        }
+    }
+
+    result
+}
+
+fn split_lines(input: &str) -> Vec<SplitWhitespace> {
+    let mut result = Vec::new();
+
+    let lines = input.lines();
+
+    for line in lines {
+        result.push(line.split_whitespace());
     }
 
     result
@@ -20,8 +33,8 @@ pub fn tokenize<C: Classification>(input: &str, classifier: &Classifier<C>) -> V
 
 #[cfg(test)]
 mod tests {
-    use man_parse::token::{Classification, Classifier, Token};
-    use man_parse::tokenizer;
+    use simple_parser::token::{Classification, Classifier, Token};
+    use simple_parser::tokenizer;
 
     #[derive(PartialEq, Debug)]
     enum TestToken {
