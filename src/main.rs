@@ -6,6 +6,8 @@ use std::fs::File;
 use std::io::Read;
 use std::process::Command;
 use man_parse::troff_parser::TroffParser;
+use man_parse::troff_preprocessor::TroffPreprocessor;
+use simple_parser::preprocessor::Preprocessor;
 
 struct ExplainArgs {
     command_name: String,
@@ -35,10 +37,9 @@ fn main() {
         read_file_content(&man_path)
     };
 
-    if !is_troff(&man_text) {
-        println!("Man text does not appear to be troff.\nQuitting.");
-        return;
-    }
+    // if !is_troff(&man_text) {
+    //     println!("Man text does not appear to be troff.");
+    // }
 
     let classifier = man_parse::troff_tokenize::TroffClassifier {};
     let tokenized = simple_parser::tokenizer::tokenize(&man_text, &classifier);
@@ -52,7 +53,7 @@ fn main() {
     parser.parse(tokenized.iter());
 
     if section.is_some() {
-        println!("section text: {}", parser.section_text());
+        println!("\x1B[1msection text: {}", parser.section_text());
     }
 }
 

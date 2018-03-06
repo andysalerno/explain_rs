@@ -28,4 +28,5 @@ impl<C: Classification> Token<C> {
 // return the classification of the Token.
 pub trait Classifier<C: Classification> {
     fn classify(&self, word: &str, starts_line: bool) -> C;
+    fn is_comment(&self, word: &str) -> bool;
 }

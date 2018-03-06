@@ -20,4 +20,9 @@ impl Classifier<TroffToken> for TroffClassifier {
             _ => TroffToken::TextWord,
         }
     }
+
+    fn is_comment(&self, word: &str) -> bool {
+        word.starts_with("\\\"") || word.starts_with(".\\\"") || word.starts_with("\\#")
+            || word == "."
+    }
 }

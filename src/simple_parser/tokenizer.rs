@@ -9,6 +9,10 @@ pub fn tokenize<C: Classification>(input: &str, classifier: &Classifier<C>) -> V
     for line in split_lines {
         for (i, c) in line.enumerate() {
             let starts_line = i == 0;
+            if starts_line && classifier.is_comment(&c) {
+                break;
+            }
+
             let class = classifier.classify(&c, starts_line);
             let token = Token::new(class, c.to_owned(), starts_line);
 

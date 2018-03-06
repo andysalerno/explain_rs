@@ -43,7 +43,6 @@ where
     pub fn new() -> Self {
         TroffParser {
             section_text: Default::default(),
-
             parse_section: None,
             current_section: None,
             tokens: None,
