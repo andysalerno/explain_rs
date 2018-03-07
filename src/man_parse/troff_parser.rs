@@ -81,7 +81,12 @@ where
 
     fn parse_sh(&mut self) {
         assert!(self.current_token().unwrap().value == ".SH");
+
         self.consume_sameline();
+
+        if self.current_token.unwrap().class == TroffToken::DoubleQuote {
+            self.parse_doublequote();
+        }
 
         // next token must be a TextWord, which is the SH argument
         self.current_section = match self.current_token() {
@@ -107,6 +112,11 @@ where
 
     fn parse_word(&mut self) {
         assert!(self.current_token().unwrap().class == TroffToken::TextWord);
+        self.consume();
+    }
+
+    fn parse_doublequote(&mut self) {
+        assert!(self.current_token().unwrap().class == TroffToken::DoubleQuote);
         self.consume();
     }
 

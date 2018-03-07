@@ -1,22 +1,26 @@
-use simple_parser::token::{Classification, Classifier, Token};
+use simple_parser::token::{Classification, Token, TokenGenerator};
 use std::str::SplitWhitespace;
 
-pub fn tokenize<C: Classification>(input: &str, classifier: &Classifier<C>) -> Vec<Token<C>> {
+pub fn tokenize<C: Classification>(input: &str, classifier: &TokenGenerator<C>) -> Vec<Token<C>> {
     let mut result = Vec::new();
 
     let split_lines = split_lines(input);
 
     for line in split_lines {
-        for (i, c) in line.enumerate() {
+        for (i, mut word) in line.enumerate() {
             let starts_line = i == 0;
-            if starts_line && classifier.is_comment(&c) {
+            if starts_line && classifier.is_comment(&word) {
                 break;
             }
 
-            let class = classifier.classify(&c, starts_line);
-            let token = Token::new(class, c.to_owned(), starts_line);
+            // if word.starts_with("\"") {
+            //     word = &word[1..];
+            //     let quote_token = Token::new()
+            // }
 
-            result.push(token);
+            let mut tokens = classifier.generate(&word, starts_line);
+
+            result.append(&mut tokens);
         }
     }
 
@@ -37,7 +41,7 @@ fn split_lines(input: &str) -> Vec<SplitWhitespace> {
 
 #[cfg(test)]
 mod tests {
-    use simple_parser::token::{Classification, Classifier, Token};
+    use simple_parser::token::{Classification, Token, TokenGenerator};
     use simple_parser::tokenizer;
 
     #[derive(PartialEq, Debug)]
@@ -52,17 +56,27 @@ mod tests {
 
     struct TestClassifier;
 
-    impl Classifier<TestToken> for TestClassifier {
-        fn classify(&self, word: &str, starts_line: bool) -> TestToken {
+    impl TokenGenerator<TestToken> for TestClassifier {
+        fn generate(&self, word: &str, starts_line: bool) -> Vec<Token<TestToken>> {
             println!("classifying: {}", word);
 
             match word {
-                "(" => return TestToken::LParen,
-                ")" => return TestToken::RParen,
-                "+" => return TestToken::AddOp,
-                w if w.parse::<i32>().is_ok() => TestToken::NumVal(w.parse::<i32>().unwrap()),
+                "(" => return vec![Token::new(TestToken::LParen, "(".into(), starts_line)],
+                ")" => return vec![Token::new(TestToken::RParen, ")".into(), starts_line)],
+                "+" => return vec![Token::new(TestToken::AddOp, "+".into(), starts_line)],
+                w if w.parse::<i32>().is_ok() => vec![
+                    Token::new(
+                        TestToken::NumVal(w.parse::<i32>().unwrap()),
+                        w.into(),
+                        starts_line,
+                    ),
+                ],
                 &_ => panic!(format!("found an illegal character: {}", word)),
             }
+        }
+
+        fn is_comment(&self, word: &str) -> bool {
+            false
         }
     }
 

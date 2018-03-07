@@ -26,7 +26,7 @@ impl<C: Classification> Token<C> {
 // trait that defines a Classifier,
 // which is given a string word and can
 // return the classification of the Token.
-pub trait Classifier<C: Classification> {
-    fn classify(&self, word: &str, starts_line: bool) -> C;
+pub trait TokenGenerator<C: Classification> {
+    fn generate(&self, word: &str, starts_line: bool) -> Vec<Token<C>>;
     fn is_comment(&self, word: &str) -> bool;
 }
