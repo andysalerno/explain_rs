@@ -64,23 +64,55 @@ where
         self.consume();
 
         while let Some(cur_tok) = self.current_token() {
-            println!("parsing token: {:?}", cur_tok);
+            //println!("parsing token: {:?}", cur_tok);
 
-            if self.parse_section.is_some() && self.parse_section == self.current_section {
-                self.section_text
-                    .push_str(&Self::format_token(self.current_token.unwrap()));
-            }
+            let cur_tok_val = Self::format_token(&self.current_token().unwrap());
+            self.add_to_output(&cur_tok_val);
 
-            if cur_tok.class == TroffToken::Macro && cur_tok.value == ".SH" {
-                self.parse_sh();
+            if cur_tok.class == TroffToken::Macro {
+                match cur_tok.value.as_str() {
+                    ".SH" => self.parse_sh(),
+                    ".sp" => self.parse_spacing(),
+                    _ => self.consume(),
+                }
             } else {
                 self.consume();
             }
         }
     }
 
+    fn add_to_output(&mut self, s: &str) {
+        if self.parse_section.is_some() && self.parse_section == self.current_section {
+            self.section_text.push_str(s);
+        }
+    }
+
+    fn parse_fontescape(&mut self) {}
+
+    fn parse_spacing(&mut self) {
+        assert!(self.current_token().unwrap().value == ".sp");
+
+        self.consume();
+
+        let tok = self.current_token();
+        if tok.is_none() || tok.unwrap().starts_line {
+            self.add_to_output("\n");
+            return;
+        }
+
+        let val: i32 = tok.unwrap().value.parse().unwrap();
+
+        for i in 0..val {
+            self.add_to_output("\n");
+        }
+    }
+
     fn parse_sh(&mut self) {
-        assert!(self.current_token().unwrap().value == ".SH");
+        assert!(
+            self.current_token().unwrap().value == ".SH",
+            "found: {}",
+            self.current_token().unwrap().value
+        );
 
         self.consume_sameline();
 
