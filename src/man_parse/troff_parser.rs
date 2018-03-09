@@ -64,7 +64,7 @@ where
         self.consume();
 
         while let Some(cur_tok) = self.current_token() {
-            //println!("parsing token: {:?}", cur_tok);
+            println!("parsing token: {:?}", cur_tok);
 
             let cur_tok_val = Self::format_token(&self.current_token().unwrap());
             self.add_to_output(&cur_tok_val);
@@ -119,6 +119,12 @@ where
         if self.current_token.unwrap().class == TroffToken::DoubleQuote {
             self.parse_doublequote();
         }
+
+        println!(
+            "current tok: {}\nclass: {:?}",
+            self.current_token().unwrap().value,
+            self.current_token().unwrap().class
+        );
 
         // next token must be a TextWord, which is the SH argument
         self.current_section = match self.current_token() {

@@ -1,39 +1,20 @@
 use simple_parser::token::{Classification, Token, TokenGenerator};
-use std::str::SplitWhitespace;
 
 pub fn tokenize<C: Classification>(input: &str, classifier: &TokenGenerator<C>) -> Vec<Token<C>> {
     let mut result = Vec::new();
 
-    let split_lines = split_lines(input);
-
-    for line in split_lines {
-        for (i, mut word) in line.enumerate() {
+    for line in input.lines() {
+        for (i, word) in line.split_whitespace().enumerate() {
             let starts_line = i == 0;
+
             if starts_line && classifier.is_comment(&word) {
                 break;
             }
-
-            // if word.starts_with("\"") {
-            //     word = &word[1..];
-            //     let quote_token = Token::new()
-            // }
 
             let mut tokens = classifier.generate(&word, starts_line);
 
             result.append(&mut tokens);
         }
-    }
-
-    result
-}
-
-fn split_lines(input: &str) -> Vec<SplitWhitespace> {
-    let mut result = Vec::new();
-
-    let lines = input.lines();
-
-    for line in lines {
-        result.push(line.split_whitespace());
     }
 
     result
