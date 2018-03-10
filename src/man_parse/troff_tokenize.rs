@@ -8,6 +8,15 @@ pub enum TroffToken {
     TextWord,
     DoubleQuote,
     Backslash,
+
+    // signifies that the previous Token
+    // was a backslash, so this token
+    // is being modified by the slash.
+    // i.e. if this character is a '-',
+    // then the /- signifies 'escaped -'
+    // if this character is the letter 'f',
+    // then /f means "set the font to..."
+    SlashModified,
 }
 
 // TODO: implement #[derive(Classification)] macro...
@@ -25,18 +34,23 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
             return tokens;
         }
 
+        // we're going to redefine this
+        // so we can say starts_line is false
+        // after we do a split
+        let mut starts_line = starts_line;
+
         let mut base_index: usize = 0;
         for (walker, c) in word.chars().enumerate() {
             let special_tok = match c {
                 '\\' => Some(Token::new(
                     TroffToken::Backslash,
                     "\\".to_owned(),
-                    starts_line,
+                    starts_line && walker == 0,
                 )),
                 '"' => Some(Token::new(
                     TroffToken::DoubleQuote,
                     "\"".to_owned(),
-                    starts_line,
+                    starts_line && walker == 0,
                 )),
                 _ => None,
             };
@@ -46,17 +60,25 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
                     let prev_word = word[base_index..walker].to_owned();
                     let prev_tok = Token::new(TroffToken::TextWord, prev_word, starts_line);
                     tokens.push(prev_tok);
+
+                    // we split, so we no longer start line
                 }
 
                 tokens.push(special_tok.unwrap());
-
+                starts_line = false;
                 base_index = walker + 1;
             }
         }
 
-        if base_index == 0 && word.len() > 0 {
-            // we never found anything, so push the whole word
-            let word_tok = Token::new(TroffToken::TextWord, word.to_owned(), starts_line);
+        // push whatever's left
+        //if base_index == 0 && word.len() > 0 {
+        // we never found anything, so push the whole word
+        if base_index < (word.len()) {
+            let word_tok = Token::new(
+                TroffToken::TextWord,
+                word[base_index..word.len()].to_owned(),
+                starts_line,
+            );
             tokens.push(word_tok);
         }
 
