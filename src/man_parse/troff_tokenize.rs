@@ -42,7 +42,7 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
             };
 
             if special_tok.is_some() {
-                if walker > base_index + 1 {
+                if walker > base_index {
                     let prev_word = word[base_index..walker].to_owned();
                     let prev_tok = Token::new(TroffToken::TextWord, prev_word, starts_line);
                     tokens.push(prev_tok);
@@ -69,59 +69,109 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
     }
 }
 
-// impl TokenGenerator<TroffToken> for TroffClassifier {
-//     fn generate(&self, word: &str, starts_line: bool) -> Vec<Token<TroffToken>> {
-//         let mut result = Vec::new();
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//         let open_quote = match word.starts_with("\"") {
-//             true => Some(Token::new(
-//                 TroffToken::DoubleQuote,
-//                 "\"".to_owned(),
-//                 starts_line,
-//             )),
-//             false => None,
-//         };
+    #[test]
+    fn test_long_word() {
+        let word = "\"MyBigWord\""; // "MyBigWord"
+        let generator = TroffClassifier {};
 
-//         let close_quote = match word.ends_with("\"") && word.len() > 1 {
-//             true => Some(Token::new(TroffToken::DoubleQuote, "\"".to_owned(), false)),
-//             false => None,
-//         };
+        let actual = generator.generate(word, false);
 
-//         let mut trimmed_word = match open_quote {
-//             Some(_) => &word[1..],
-//             None => word,
-//         };
+        let expected = vec![
+            Token::new(TroffToken::DoubleQuote, "\"".to_owned(), false),
+            Token::new(TroffToken::TextWord, "MyBigWord".to_owned(), false),
+            Token::new(TroffToken::DoubleQuote, "\"".to_owned(), false),
+        ];
 
-//         trimmed_word = match close_quote {
-//             Some(_) => &trimmed_word[..trimmed_word.len() - 1],
-//             None => trimmed_word,
-//         };
+        assert!(
+            actual == expected,
+            "expected: {:?}\nactual: {:?}",
+            expected,
+            actual
+        );
+    }
 
-//         // push open quote, if available
-//         if open_quote.is_some() {
-//             let tok = Token::new(TroffToken::DoubleQuote, "\"".to_owned(), starts_line);
-//             result.push(tok);
-//         }
+    #[test]
+    fn test_short_word() {
+        let word = "\"I\""; // "I"
+        let generator = TroffClassifier {};
 
-//         // push word
-//         {
-//             let word_category = match word.starts_with(".") {
-//                 true => TroffToken::Macro,
-//                 false => TroffToken::TextWord,
-//             };
+        let actual = generator.generate(word, false);
 
-//             let word_starts_line = open_quote.is_none() && starts_line;
-//             let word_tok = Token::new(word_category, trimmed_word.to_owned(), word_starts_line);
-//             result.push(word_tok);
-//         }
+        let expected = vec![
+            Token::new(TroffToken::DoubleQuote, "\"".to_owned(), false),
+            Token::new(TroffToken::TextWord, "I".to_owned(), false),
+            Token::new(TroffToken::DoubleQuote, "\"".to_owned(), false),
+        ];
 
-//         // push close quote, if available
-//         if close_quote.is_some() {
-//             let tok = Token::new(TroffToken::DoubleQuote, "\"".to_owned(), false);
-//             result.push(tok);
-//         }
+        assert!(
+            actual == expected,
+            "expected: {:?}\nactual: {:?}",
+            expected,
+            actual
+        );
+    }
 
-//         result
-//     }
+    #[test]
+    fn test_quote_only() {
+        let word = "\"";
+        let generator = TroffClassifier {};
 
-// }
+        let actual = generator.generate(word, false);
+
+        let expected = vec![Token::new(TroffToken::DoubleQuote, "\"".to_owned(), false)];
+
+        assert!(
+            actual == expected,
+            "expected: {:?}\nactual: {:?}",
+            expected,
+            actual
+        );
+    }
+
+    #[test]
+    fn test_double_quote() {
+        let word = "\"\"";
+        let generator = TroffClassifier {};
+
+        let actual = generator.generate(word, false);
+
+        let expected = vec![
+            Token::new(TroffToken::DoubleQuote, "\"".to_owned(), false),
+            Token::new(TroffToken::DoubleQuote, "\"".to_owned(), false),
+        ];
+
+        assert!(
+            actual == expected,
+            "expected: {:?}\nactual: {:?}",
+            expected,
+            actual
+        );
+    }
+
+    #[test]
+    fn test_multiple_splits() {
+        let word = "\\lefthalf\\righthalf\\";
+        let generator = TroffClassifier {};
+
+        let actual = generator.generate(word, true);
+
+        let expected = vec![
+            Token::new(TroffToken::Backslash, "\\".to_owned(), true),
+            Token::new(TroffToken::TextWord, "lefthalf".to_owned(), false),
+            Token::new(TroffToken::Backslash, "\\".to_owned(), false),
+            Token::new(TroffToken::TextWord, "righthalf".to_owned(), false),
+            Token::new(TroffToken::Backslash, "\\".to_owned(), false),
+        ];
+
+        assert!(
+            actual == expected,
+            "expected: {:?}\nactual: {:?}",
+            expected,
+            actual
+        );
+    }
+}

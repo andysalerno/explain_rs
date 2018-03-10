@@ -44,6 +44,10 @@ fn main() {
     let classifier = man_parse::troff_tokenize::TroffClassifier {};
     let tokenized = simple_parser::tokenizer::tokenize(&man_text, &classifier);
 
+    for tok in &tokenized {
+        println!("{:?}", tok);
+    }
+
     let mut parser = match section {
         None => TroffParser::new(),
         // TODO: for now, I'm saying every -s argument is for Synopsis...

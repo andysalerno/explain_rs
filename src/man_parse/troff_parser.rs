@@ -64,8 +64,6 @@ where
         self.consume();
 
         while let Some(cur_tok) = self.current_token() {
-            println!("parsing token: {:?}", cur_tok);
-
             let cur_tok_val = Self::format_token(&self.current_token().unwrap());
             self.add_to_output(&cur_tok_val);
 

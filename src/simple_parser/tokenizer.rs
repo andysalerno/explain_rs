@@ -62,7 +62,7 @@ mod tests {
     }
 
     #[test]
-    fn test_tokenize() {
+    fn test_simple_line() {
         let s = "( 1 +      8 )";
 
         let classifier = TestClassifier {};
