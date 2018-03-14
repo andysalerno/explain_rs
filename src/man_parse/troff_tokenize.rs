@@ -16,7 +16,7 @@ pub enum TroffToken {
     // then the /- signifies 'escaped -'
     // if this character is the letter 'f',
     // then /f means "set the font to..."
-    SlashModified,
+    SlashEscaped,
 }
 
 // TODO: implement #[derive(Classification)] macro...
@@ -40,19 +40,21 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
         let mut starts_line = starts_line;
 
         let mut base_index: usize = 0;
-        for (walker, c) in word.chars().enumerate() {
-            let special_tok = match c {
-                '\\' => Some(Token::new(
-                    TroffToken::Backslash,
-                    "\\".to_owned(),
-                    starts_line && walker == 0,
-                )),
-                '"' => Some(Token::new(
-                    TroffToken::DoubleQuote,
-                    "\"".to_owned(),
-                    starts_line && walker == 0,
-                )),
-                _ => None,
+        let chars = word.chars();
+        for (walker, c) in chars.enumerate() {
+            // if the last character was a backslash-escape,
+            // the current character is the escaped token
+            if tokens.last().is_some() && tokens.last().unwrap().class == TroffToken::Backslash {
+                let escaped_tok = Token::new(TroffToken::SlashEscaped, c.to_string(), starts_line);
+                tokens.push(escaped_tok);
+                base_index = walker + 1;
+                continue;
+            }
+
+            // first, see if this char is any special escape char
+            let special_tok = match try_match_special(&c) {
+                Some(t) => Some(Token::new(t, c.to_string(), starts_line)),
+                None => None,
             };
 
             if special_tok.is_some() {
@@ -60,8 +62,6 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
                     let prev_word = word[base_index..walker].to_owned();
                     let prev_tok = Token::new(TroffToken::TextWord, prev_word, starts_line);
                     tokens.push(prev_tok);
-
-                    // we split, so we no longer start line
                 }
 
                 tokens.push(special_tok.unwrap());
@@ -70,10 +70,7 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
             }
         }
 
-        // push whatever's left
-        //if base_index == 0 && word.len() > 0 {
-        // we never found anything, so push the whole word
-        if base_index < (word.len()) {
+        if base_index < word.len() {
             let word_tok = Token::new(
                 TroffToken::TextWord,
                 word[base_index..word.len()].to_owned(),
@@ -89,6 +86,16 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
         word.starts_with("\\\"") || word.starts_with(".\\\"") || word.starts_with("\\#")
             || word == "."
     }
+}
+
+fn try_match_special(c: &char) -> Option<TroffToken> {
+    let special_tok = match *c {
+        '\\' => Some(TroffToken::Backslash),
+        '"' => Some(TroffToken::DoubleQuote),
+        _ => None,
+    };
+
+    special_tok
 }
 
 #[cfg(test)]
