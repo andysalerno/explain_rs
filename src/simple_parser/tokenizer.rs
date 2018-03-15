@@ -1,6 +1,6 @@
-use simple_parser::token::{Classification, Token, TokenGenerator};
+use simple_parser::token::{Token, TokenClass, TokenGenerator};
 
-pub fn tokenize<C: Classification>(input: &str, classifier: &TokenGenerator<C>) -> Vec<Token<C>> {
+pub fn tokenize<C: TokenClass>(input: &str, classifier: &TokenGenerator<C>) -> Vec<Token<C>> {
     let mut result = Vec::new();
 
     for line in input.lines() {
@@ -22,7 +22,7 @@ pub fn tokenize<C: Classification>(input: &str, classifier: &TokenGenerator<C>) 
 
 #[cfg(test)]
 mod tests {
-    use simple_parser::token::{Classification, Token, TokenGenerator};
+    use simple_parser::token::{Token, TokenClass, TokenGenerator};
     use simple_parser::tokenizer;
 
     #[derive(PartialEq, Debug)]
@@ -33,13 +33,13 @@ mod tests {
         AddOp,
     }
 
-    impl Classification for TestToken {}
+    impl TokenClass for TestToken {}
 
     struct TestClassifier;
 
     impl TokenGenerator<TestToken> for TestClassifier {
         fn generate(&self, word: &str, starts_line: bool) -> Vec<Token<TestToken>> {
-            println!("classifying: {}", word);
+            println!("classifyinTokenClass: {}", word);
 
             match word {
                 "(" => return vec![Token::new(TestToken::LParen, "(".into(), starts_line)],
@@ -52,7 +52,7 @@ mod tests {
                         starts_line,
                     ),
                 ],
-                &_ => panic!(format!("found an illegal character: {}", word)),
+                &_ => panic!(format!("found an illeTokenClassal character: {}", word)),
             }
         }
 

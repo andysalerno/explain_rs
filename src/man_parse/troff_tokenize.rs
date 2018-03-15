@@ -1,6 +1,6 @@
 // implementing tokenization logic for a very small subset of Troff
 
-use simple_parser::token::{Classification, Token, TokenGenerator};
+use simple_parser::token::{Token, TokenClass, TokenGenerator};
 
 #[derive(Debug, PartialEq)]
 pub enum TroffToken {
@@ -19,8 +19,8 @@ pub enum TroffToken {
     SlashEscaped,
 }
 
-// TODO: implement #[derive(Classification)] macro...
-impl Classification for TroffToken {}
+// TODO: implement #[derive(TokenClass)] macro...
+impl TokenClass for TroffToken {}
 
 pub struct TroffClassifier;
 

@@ -4,16 +4,16 @@
 // 3. run via tokenizer::tokenize()
 
 // simple unit trait to mark something as a Classification
-pub trait Classification {}
+pub trait TokenClass {}
 
 #[derive(PartialEq, Debug)]
-pub struct Token<C: Classification> {
+pub struct Token<C: TokenClass> {
     pub class: C,
     pub value: String,
     pub starts_line: bool,
 }
 
-impl<C: Classification> Token<C> {
+impl<C: TokenClass> Token<C> {
     pub fn new(class: C, value: String, starts_line: bool) -> Token<C> {
         Token {
             class: class,
@@ -23,10 +23,10 @@ impl<C: Classification> Token<C> {
     }
 }
 
-// trait that defines a Classifier,
+// trait that defines a TokenGenerator,
 // which is given a string word and can
-// return the classification of the Token.
-pub trait TokenGenerator<C: Classification> {
+// return the Token.
+pub trait TokenGenerator<C: TokenClass> {
     fn generate(&self, word: &str, starts_line: bool) -> Vec<Token<C>>;
     fn is_comment(&self, word: &str) -> bool;
 }
