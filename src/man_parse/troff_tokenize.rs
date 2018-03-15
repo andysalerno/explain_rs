@@ -2,7 +2,7 @@
 
 use simple_parser::token::{Token, TokenClass, TokenGenerator};
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Copy, Clone)]
 pub enum TroffToken {
     Macro,
     TextWord,
@@ -16,7 +16,7 @@ pub enum TroffToken {
     // then the /- signifies 'escaped -'
     // if this character is the letter 'f',
     // then /f means "set the font to..."
-    SlashEscaped,
+    EscapeCommand,
 }
 
 // TODO: implement #[derive(TokenClass)] macro...
@@ -26,7 +26,7 @@ pub struct TroffClassifier;
 
 impl TokenGenerator<TroffToken> for TroffClassifier {
     fn generate(&self, word: &str, starts_line: bool) -> Vec<Token<TroffToken>> {
-        let mut tokens = Vec::new();
+        let mut tokens = Vec::new(); // TODO: preallocate a smart amount
 
         if starts_line && word.starts_with('.') {
             let tok = Token::new(TroffToken::Macro, word.to_owned(), true);
@@ -39,34 +39,46 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
         // after we do a split
         let mut starts_line = starts_line;
 
+        let mut peek_iter = word.chars().enumerate().peekable();
+
         let mut base_index: usize = 0;
-        let chars = word.chars();
-        for (walker, c) in chars.enumerate() {
-            // if the last character was a backslash-escape,
-            // the current character is the escaped token
-            if tokens.last().is_some() && tokens.last().unwrap().class == TroffToken::Backslash {
-                let escaped_tok = Token::new(TroffToken::SlashEscaped, c.to_string(), starts_line);
-                tokens.push(escaped_tok);
-                base_index = walker + 1;
-                continue;
-            }
-
-            // first, see if this char is any special escape char
-            let special_tok = match try_match_special(&c) {
-                Some(t) => Some(Token::new(t, c.to_string(), starts_line)),
-                None => None,
-            };
-
-            if special_tok.is_some() {
+        while let Some((walker, c)) = peek_iter.next() {
+            if let Some(special_class) = try_match_special(&c) {
+                // found a special char in the middle of the word
+                // so split here
                 if walker > base_index {
                     let prev_word = word[base_index..walker].to_owned();
                     let prev_tok = Token::new(TroffToken::TextWord, prev_word, starts_line);
                     tokens.push(prev_tok);
+                    starts_line = false;
                 }
 
-                tokens.push(special_tok.unwrap());
+                let special_tok = Token::new(special_class, c.to_string(), starts_line);
+
+                tokens.push(special_tok);
                 starts_line = false;
                 base_index = walker + 1;
+
+                // backslash has special behavior
+                // \- prints an em-dash
+                // \fBHello prints 'Hello' in bold
+                if special_class == TroffToken::Backslash {
+                    if let Some(next_char) = peek_iter.peek() {
+                        // how long is the escape?
+                        // 1 char: \-
+                        // 2 char: \fB[text]
+                        // 3+ char: \f(fn... ??
+                        let char_index = next_char.0;
+                        let escaped = get_escaped(&word[char_index..word.len()]);
+
+                        if let Some(escape_class) = try_match_escaped(&next_char.1) {
+                            let escaped_token =
+                                Token::new(escape_class, next_char.1.to_string(), starts_line);
+                            tokens.push(escaped_token);
+                            starts_line = false;
+                        }
+                    }
+                }
             }
         }
 
@@ -85,6 +97,24 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
     fn is_comment(&self, word: &str) -> bool {
         word.starts_with("\\\"") || word.starts_with(".\\\"") || word.starts_with("\\#")
             || word == "."
+    }
+}
+
+/// Given a str slice that follows an escape,
+/// return the substring of the slice that is
+/// affected by the escape.
+fn get_escaped(s: &str) -> &str {
+    if s.starts_with("B") {
+        return &s[0..1];
+    } else {
+        return &s[0..1];
+    }
+}
+
+fn try_match_escaped(c: &char) -> Option<TroffToken> {
+    match *c {
+        'f' => Some(TroffToken::EscapeCommand),
+        _ => None,
     }
 }
 
