@@ -9,14 +9,14 @@ pub enum TroffToken {
     DoubleQuote,
     Backslash,
 
-    // signifies that the previous Token
-    // was a backslash, so this token
-    // is being modified by the slash.
-    // i.e. if this character is a '-',
-    // then the /- signifies 'escaped -'
-    // if this character is the letter 'f',
-    // then /f means "set the font to..."
+    // a command that immediately follows '\'
+    // i.e., the 'f' in '\f'
     EscapeCommand,
+
+    // an argument to a command
+    // i.e., the 'B' in '\fB',
+    // or the 'I' in '.ft I'
+    CommandArg,
 }
 
 // TODO: implement #[derive(TokenClass)] macro...
@@ -39,7 +39,7 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
         // after we do a split
         let mut starts_line = starts_line;
 
-        let mut peek_iter = word.chars().enumerate().peekable();
+        let mut peek_iter = word.chars().enumerate();
 
         let mut base_index: usize = 0;
         while let Some((walker, c)) = peek_iter.next() {
@@ -59,23 +59,33 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
                 starts_line = false;
                 base_index = walker + 1;
 
-                // backslash has special behavior
-                // \- prints an em-dash
-                // \fBHello prints 'Hello' in bold
+                // after a '\' is always an escaped character
                 if special_class == TroffToken::Backslash {
-                    if let Some(next_char) = peek_iter.peek() {
-                        // how long is the escape?
-                        // 1 char: \-
-                        // 2 char: \fB[text]
-                        // 3+ char: \f(fn... ??
-                        let char_index = next_char.0;
-                        let escaped = get_escaped(&word[char_index..word.len()]);
+                    if let Some(next) = peek_iter.next() {
+                        let next_index = next.0;
+                        let next_char = next.1;
 
-                        if let Some(escape_class) = try_match_escaped(&next_char.1) {
-                            let escaped_token =
-                                Token::new(escape_class, next_char.1.to_string(), starts_line);
-                            tokens.push(escaped_token);
-                            starts_line = false;
+                        let escaped =
+                            Token::new(TroffToken::EscapeCommand, next_char.to_string(), false);
+
+                        tokens.push(escaped);
+                        base_index = next_index + 1;
+
+                        // after the escaped token, we might now have arguments
+                        // i.e., '\fB' takes arg 'B'
+                        let args = get_args(next_char, &word[next_index + 1..]);
+
+                        if args.len() > 0 {
+                            let args_tok =
+                                Token::new(TroffToken::CommandArg, args.to_string(), false);
+
+                            tokens.push(args_tok);
+
+                            for _ in 0..args.len() {
+                                peek_iter.next();
+                            }
+
+                            base_index += args.len();
                         }
                     }
                 }
@@ -100,21 +110,22 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
     }
 }
 
-/// Given a str slice that follows an escape,
-/// return the substring of the slice that is
-/// affected by the escape.
-fn get_escaped(s: &str) -> &str {
-    if s.starts_with("B") {
-        return &s[0..1];
-    } else {
-        return &s[0..1];
-    }
-}
+/// Some escape commands can have args,
+/// like '\fB' where the escape command is 'f'
+/// and the arg is 'B'.
+///
+/// Given a command char, and the slice immediately following it,
+/// return which subset of the slice is made up of args.
+///
+/// i.e., given command 'f' and word 'BHello',
+/// the result should be 'B'.
+fn get_args(command_char: char, word: &str) -> &str {
+    match command_char {
+        'f' => &word[0..1],
 
-fn try_match_escaped(c: &char) -> Option<TroffToken> {
-    match *c {
-        'f' => Some(TroffToken::EscapeCommand),
-        _ => None,
+        // these commands take no args, so always empty slice
+        '-' => &word[0..0],
+        _ => &word[0..0],
     }
 }
 
