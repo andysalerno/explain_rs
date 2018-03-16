@@ -224,17 +224,50 @@ mod tests {
 
     #[test]
     fn test_multiple_splits() {
-        let word = "\\lefthalf\\righthalf\\";
+        let word = "\\-lefthalf\\-righthalf\\";
         let generator = TroffClassifier {};
 
         let actual = generator.generate(word, true);
 
         let expected = vec![
             Token::new(TroffToken::Backslash, "\\".to_owned(), true),
+            Token::new(TroffToken::EscapeCommand, "-".to_owned(), false),
             Token::new(TroffToken::TextWord, "lefthalf".to_owned(), false),
             Token::new(TroffToken::Backslash, "\\".to_owned(), false),
+            Token::new(TroffToken::EscapeCommand, "-".to_owned(), false),
             Token::new(TroffToken::TextWord, "righthalf".to_owned(), false),
             Token::new(TroffToken::Backslash, "\\".to_owned(), false),
+        ];
+
+        assert!(
+            actual == expected,
+            "expected: {:?}\nactual: {:?}",
+            expected,
+            actual
+        );
+    }
+
+    #[test]
+    fn test_inline_macro() {
+        let words = "\\fBHello world\\fP".split_whitespace();
+        let generator = TroffClassifier {};
+
+        let mut actual = Vec::new();
+
+        for word in words {
+            let mut result = generator.generate(word, true);
+            actual.append(&mut result);
+        }
+
+        let expected = vec![
+            Token::new(TroffToken::Backslash, "\\".to_owned(), true),
+            Token::new(TroffToken::EscapeCommand, "f".to_owned(), false),
+            Token::new(TroffToken::CommandArg, "B".to_owned(), false),
+            Token::new(TroffToken::TextWord, "Hello".to_owned(), false),
+            Token::new(TroffToken::TextWord, "world".to_owned(), true),
+            Token::new(TroffToken::Backslash, "\\".to_owned(), false),
+            Token::new(TroffToken::EscapeCommand, "f".to_owned(), false),
+            Token::new(TroffToken::CommandArg, "P".to_owned(), false),
         ];
 
         assert!(
