@@ -32,8 +32,16 @@ where
     /// if a section was requested via '-s', store its text here
     section_text: String,
 
+    /// also a string of section text, but *before* formatting (for debug)
+    before_section_text: String,
+
     /// if a section was requested via '-s', this is the requested section
     parse_section: Option<ManSection>,
+
+    /// is no-fill mode active?
+    /// prints lines "as-is", including whitespace.
+    /// enabled with macro ".nf", disabled with ".fi"
+    nofill_active: bool,
 }
 
 impl<'a, I> TroffParser<'a, I>
@@ -43,10 +51,12 @@ where
     pub fn new() -> Self {
         TroffParser {
             section_text: Default::default(),
+            before_section_text: Default::default(),
             parse_section: None,
             current_section: None,
             tokens: None,
             current_token: None,
+            nofill_active: false,
         }
     }
 
@@ -64,19 +74,53 @@ where
         self.consume();
 
         while let Some(cur_tok) = self.current_token() {
-            let cur_tok_val = Self::format_token(&self.current_token().unwrap());
-            self.add_to_output(&cur_tok_val);
+            let cur_tok_val = Self::format_token(cur_tok);
+            self.add_to_before_output(&cur_tok_val);
+
+            if self.nofill_active && cur_tok.starts_line {
+                self.add_to_output("\n");
+            }
 
             if cur_tok.class == TroffToken::Macro {
                 match cur_tok.value.as_str() {
                     ".SH" => self.parse_sh(),
                     ".sp" => self.parse_spacing(),
+                    ".br" => self.parse_br(),
+                    ".nf" => self.parse_nf(),
+                    ".fi" => self.parse_fi(),
                     _ => self.consume(),
                 }
+            } else if cur_tok.class == TroffToken::Backslash {
+                self.parse_backslash();
+            } else if cur_tok.class == TroffToken::TextWord {
+                self.parse_textword();
             } else {
                 self.consume();
             }
         }
+    }
+
+    fn parse_textword(&mut self) {
+        let cur_tok = self.current_token().unwrap();
+        self.add_to_output_sp(&cur_tok.value);
+        self.consume();
+    }
+
+    fn parse_nf(&mut self) {
+        // nofill mode adds a linebreak
+        self.add_to_output("\n");
+        self.nofill_active = true;
+        self.consume();
+    }
+
+    fn parse_fi(&mut self) {
+        self.nofill_active = false;
+        self.consume();
+    }
+
+    fn parse_br(&mut self) {
+        self.add_to_output("\n");
+        self.consume();
     }
 
     fn add_to_output(&mut self, s: &str) {
@@ -85,7 +129,33 @@ where
         }
     }
 
-    fn parse_fontescape(&mut self) {}
+    fn add_to_output_sp(&mut self, s: &str) {
+        if self.parse_section.is_some() && self.parse_section == self.current_section {
+            self.section_text.push_str(" ");
+            self.section_text.push_str(s);
+        }
+    }
+
+    fn add_to_before_output(&mut self, s: &str) {
+        if self.parse_section.is_some() && self.parse_section == self.current_section {
+            self.before_section_text.push_str(s);
+        }
+    }
+
+    fn parse_backslash(&mut self) {
+        self.consume();
+
+        if self.current_token().is_none() {
+            return;
+        }
+
+        let cur_tok = self.current_token().unwrap();
+
+        match cur_tok.value.as_str() {
+            "-" => self.add_to_output("-"),
+            _ => self.consume(),
+        }
+    }
 
     fn parse_spacing(&mut self) {
         assert!(self.current_token().unwrap().value == ".sp");
@@ -171,6 +241,10 @@ where
 
     fn current_token(&self) -> Option<I::Item> {
         self.current_token
+    }
+
+    pub fn before_section_text(&self) -> &str {
+        &self.before_section_text
     }
 
     pub fn section_text(&self) -> &str {

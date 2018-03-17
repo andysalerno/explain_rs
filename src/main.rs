@@ -57,7 +57,9 @@ fn main() {
     parser.parse(tokenized.iter());
 
     if section.is_some() {
-        println!("\x1B[1msection text: {}", parser.section_text());
+        println!("before:\n{}", parser.before_section_text());
+        println!("-----------------");
+        println!("after:\n{}", parser.section_text());
     }
 }
 
