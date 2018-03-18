@@ -21,6 +21,8 @@ enum TroffMacros {
     IR,
 }
 
+const LINEBREAK: &str = "\n";
+
 pub struct TroffParser<'a, I>
 where
     I: Iterator<Item = &'a Token<TroffToken>>,
@@ -78,13 +80,13 @@ where
             self.add_to_before_output(&cur_tok_val);
 
             if self.nofill_active && cur_tok.starts_line {
-                self.add_to_output("\n");
+                self.add_to_output(LINEBREAK);
             }
 
             if cur_tok.class == TroffToken::Macro {
                 match cur_tok.value.as_str() {
                     ".SH" => self.parse_sh(),
-                    ".sp" => self.parse_spacing(),
+                    ".sp" => self.parse_sp(),
                     ".br" => self.parse_br(),
                     ".nf" => self.parse_nf(),
                     ".fi" => self.parse_fi(),
@@ -108,7 +110,7 @@ where
 
     fn parse_nf(&mut self) {
         // nofill mode adds a linebreak
-        self.add_to_output("\n");
+        self.add_to_output(LINEBREAK);
         self.nofill_active = true;
         self.consume();
     }
@@ -119,7 +121,7 @@ where
     }
 
     fn parse_br(&mut self) {
-        self.add_to_output("\n");
+        self.add_to_output(LINEBREAK);
         self.consume();
     }
 
@@ -157,7 +159,7 @@ where
         }
     }
 
-    fn parse_spacing(&mut self) {
+    fn parse_sp(&mut self) {
         assert!(self.current_token().unwrap().value == ".sp");
 
         self.consume();
@@ -171,7 +173,7 @@ where
         let val: i32 = tok.unwrap().value.parse().unwrap();
 
         for i in 0..val {
-            self.add_to_output("\n");
+            self.add_to_output(LINEBREAK);
         }
     }
 
@@ -194,14 +196,15 @@ where
             self.current_token().unwrap().class
         );
 
-        // next token must be a TextWord, which is the SH argument
-        self.current_section = match self.current_token() {
-            Some(token) if token.value == "NAME" => Some(ManSection::Name),
-            Some(token) if token.value == "SYNOPSIS" => Some(ManSection::Synopsis),
-            Some(token) if token.value == "DESCRIPTION" => Some(ManSection::Description),
-            Some(token) if token.value == "OPTIONS" => Some(ManSection::Options),
-            _ => Some(ManSection::Unknown),
-        };
+        if let Some(cur_tok) = self.current_token() {
+            self.current_section = match cur_tok.value.as_str() {
+                "NAME" => Some(ManSection::Name),
+                "SYNOPSIS" => Some(ManSection::Synopsis),
+                "DESCRIPTION" => Some(ManSection::Description),
+                "OPTIONS" => Some(ManSection::Options),
+                _ => Some(ManSection::Unknown),
+            };
+        }
 
         self.parse_word();
 
@@ -210,7 +213,7 @@ where
 
     fn format_token(token: I::Item) -> String {
         if token.starts_line {
-            format!("\n{}", token.value)
+            format!("{}{}", LINEBREAK, token.value)
         } else {
             format!(" {}", token.value)
         }
