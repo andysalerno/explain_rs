@@ -96,6 +96,8 @@ where
                 self.parse_backslash();
             } else if cur_tok.class == TroffToken::TextWord {
                 self.parse_textword();
+            } else if cur_tok.class == TroffToken::Space {
+                self.parse_space();
             } else {
                 self.consume();
             }
@@ -104,7 +106,7 @@ where
 
     fn parse_textword(&mut self) {
         let cur_tok = self.current_token().unwrap();
-        self.add_to_output_sp(&cur_tok.value);
+        self.add_to_output(&cur_tok.value);
         self.consume();
     }
 
@@ -125,18 +127,23 @@ where
         self.consume();
     }
 
+    fn parse_space(&mut self) {
+        self.add_to_output(" ");
+        self.consume();
+    }
+
     fn add_to_output(&mut self, s: &str) {
         if self.parse_section.is_some() && self.parse_section == self.current_section {
             self.section_text.push_str(s);
         }
     }
 
-    fn add_to_output_sp(&mut self, s: &str) {
-        if self.parse_section.is_some() && self.parse_section == self.current_section {
-            self.section_text.push_str(" ");
-            self.section_text.push_str(s);
-        }
-    }
+    // fn add_to_output_sp(&mut self, s: &str) {
+    //     if self.parse_section.is_some() && self.parse_section == self.current_section {
+    //         self.section_text.push_str(" ");
+    //         self.section_text.push_str(s);
+    //     }
+    // }
 
     fn add_to_before_output(&mut self, s: &str) {
         if self.parse_section.is_some() && self.parse_section == self.current_section {

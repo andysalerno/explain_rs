@@ -4,6 +4,7 @@ use simple_parser::token::{Token, TokenClass, TokenGenerator};
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum TroffToken {
+    Space,
     Macro,
     TextWord,
     DoubleQuote,
@@ -100,6 +101,8 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
             );
             tokens.push(word_tok);
         }
+
+        tokens.push(Token::new(TroffToken::Space, " ".to_string(), false));
 
         tokens
     }
