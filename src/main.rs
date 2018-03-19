@@ -1,13 +1,13 @@
 mod simple_parser;
 mod man_parse;
+mod text_format;
 
 use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::process::Command;
-use man_parse::troff_parser::TroffParser;
-use man_parse::troff_preprocessor::TroffPreprocessor;
-use simple_parser::preprocessor::Preprocessor;
+use man_parse::troff_parser::{ManSection, TroffParser};
+use text_format::text_format::TextFormat;
 
 struct ExplainArgs {
     command_name: String,
@@ -18,8 +18,6 @@ struct ExplainArgs {
 
 fn main() {
     let args = argparse();
-
-    println!("executing for program named: {}", args.command_name);
 
     let section = if args.explain_args.len() >= 2 {
         // TODO: for now, I'm saying all explain args is -s...
@@ -44,14 +42,14 @@ fn main() {
     let classifier = man_parse::troff_tokenize::TroffClassifier {};
     let tokenized = simple_parser::tokenizer::tokenize(&man_text, &classifier);
 
-    for tok in &tokenized {
-        println!("{:?}", tok);
-    }
+    // for tok in &tokenized {
+    //     println!("{:?}", tok);
+    // }
 
     let mut parser = match section {
         None => TroffParser::new(),
         // TODO: for now, I'm saying every -s argument is for Synopsis...
-        Some(s) => TroffParser::for_section(man_parse::troff_parser::ManSection::Synopsis),
+        Some(s) => TroffParser::for_section(ManSection::from(s.as_str())),
     };
 
     parser.parse(tokenized.iter());
@@ -133,9 +131,9 @@ fn unzip(zip_path: &str) -> String {
     format!("{}", String::from_utf8_lossy(&output.stdout))
 }
 
-fn is_troff(text: &str) -> bool {
-    text.starts_with(".TH")
-}
+// fn is_troff(text: &str) -> bool {
+//     text.starts_with(".TH")
+// }
 
 fn print_usage() {
     println!("Usage: TODO");

@@ -10,16 +10,28 @@ pub enum ManSection {
     Options,
 }
 
-enum TroffMacros {
-    TH,
-    RB,
-    I,
-    SH,
-    ll,
-    B,
-    PP,
-    IR,
+impl<'a> From<&'a str> for ManSection {
+    fn from(s: &str) -> Self {
+        match s.to_lowercase().as_str() {
+            "name" => ManSection::Name,
+            "synopsis" => ManSection::Synopsis,
+            "options" => ManSection::Options,
+            "description" => ManSection::Description,
+            _ => ManSection::Unknown,
+        }
+    }
 }
+
+// enum TroffMacros {
+//     TH,
+//     RB,
+//     I,
+//     SH,
+//     ll,
+//     B,
+//     PP,
+//     IR,
+// }
 
 const LINEBREAK: &str = "\n";
 
@@ -179,7 +191,7 @@ where
 
         let val: i32 = tok.unwrap().value.parse().unwrap();
 
-        for i in 0..val {
+        for _ in 0..val {
             self.add_to_output(LINEBREAK);
         }
     }
@@ -197,11 +209,11 @@ where
             self.parse_doublequote();
         }
 
-        println!(
-            "current tok: {}\nclass: {:?}",
-            self.current_token().unwrap().value,
-            self.current_token().unwrap().class
-        );
+        // println!(
+        //     "current tok: {}\nclass: {:?}",
+        //     self.current_token().unwrap().value,
+        //     self.current_token().unwrap().class
+        // );
 
         if let Some(cur_tok) = self.current_token() {
             self.current_section = match cur_tok.value.as_str() {
@@ -215,7 +227,7 @@ where
 
         self.parse_word();
 
-        println!("Set section to: {:?}", self.current_section);
+        //println!("Set section to: {:?}", self.current_section);
     }
 
     fn format_token(token: I::Item) -> String {
