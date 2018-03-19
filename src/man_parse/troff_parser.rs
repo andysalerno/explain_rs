@@ -58,6 +58,8 @@ where
     /// prints lines "as-is", including whitespace.
     /// enabled with macro ".nf", disabled with ".fi"
     nofill_active: bool,
+
+    bold_active: bool,
 }
 
 impl<'a, I> TroffParser<'a, I>
@@ -73,6 +75,7 @@ where
             tokens: None,
             current_token: None,
             nofill_active: false,
+            bold_active: false,
         }
     }
 
@@ -234,9 +237,10 @@ where
                 "B" => {
                     // TODO: this is too simple, we should not bold just the very next token
                     // it should persist until we hit the "close" token
+                    self.bold_active = true;
                     self.consume();
-                    let bold = self.current_token().unwrap().value.bold();
-                    self.add_to_output(&bold);
+                    //let bold = self.current_token().unwrap().value.bold();
+                    self.add_to_output(&self.current_token().unwrap().value);
                     self.consume();
                 }
                 _ => self.consume(),
