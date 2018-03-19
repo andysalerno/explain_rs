@@ -260,19 +260,25 @@ where
     }
 
     fn parse_sp(&mut self) {
-        assert!(self.current_token().unwrap().value == ".sp");
+        self.consume_it(".sp");
 
-        self.consume();
+        let mut linebreaks = 2;
 
-        let tok = self.current_token();
-        if tok.is_none() || tok.unwrap().starts_line {
-            self.add_to_output("\n");
-            return;
+        if let Some(tok) = self.current_token() {
+            if !tok.starts_line {
+                // there's an argument to .sp
+                println!("parsing .sp arg: {}", tok.value);
+                let arg_linebreaks: i32 = tok.value.parse().unwrap();
+
+                if arg_linebreaks > 0 {
+                    linebreaks += arg_linebreaks;
+                }
+
+                self.consume();
+            }
         }
 
-        let val: i32 = tok.unwrap().value.parse().unwrap();
-
-        for _ in 0..val {
+        for _ in 0..linebreaks {
             self.add_to_output(LINEBREAK);
         }
     }
