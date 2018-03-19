@@ -182,7 +182,12 @@ where
 
     fn add_to_output(&mut self, s: &str) {
         if self.parse_section.is_some() && self.parse_section == self.current_section {
-            self.section_text.push_str(s);
+            if self.bold_active {
+                let bold = s.bold();
+                self.section_text.push_str(&bold);
+            } else {
+                self.section_text.push_str(s);
+            }
         }
     }
 
@@ -239,8 +244,12 @@ where
                     // it should persist until we hit the "close" token
                     self.bold_active = true;
                     self.consume();
-                    //let bold = self.current_token().unwrap().value.bold();
-                    self.add_to_output(&self.current_token().unwrap().value);
+                    //let token_val = &self.current_token().unwrap().value;
+                    //self.add_to_output(&token_val);
+                    //self.consume();
+                }
+                "R" => {
+                    self.bold_active = false;
                     self.consume();
                 }
                 _ => self.consume(),
