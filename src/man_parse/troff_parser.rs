@@ -159,7 +159,7 @@ where
     }
 
     fn parse_nf(&mut self) {
-        // nofill mode adds a linebreak
+        // nofill mode also adds a linebreak
         self.add_to_output(LINEBREAK);
         self.nofill_active = true;
         self.consume();
@@ -190,13 +190,6 @@ where
             }
         }
     }
-
-    // fn add_to_output_sp(&mut self, s: &str) {
-    //     if self.parse_section.is_some() && self.parse_section == self.current_section {
-    //         self.section_text.push_str(" ");
-    //         self.section_text.push_str(s);
-    //     }
-    // }
 
     fn add_to_before_output(&mut self, s: &str) {
         if self.parse_section.is_some() && self.parse_section == self.current_section {
@@ -240,15 +233,10 @@ where
         if let Some(tok) = self.current_token() {
             match tok.value.as_str() {
                 "B" => {
-                    // TODO: this is too simple, we should not bold just the very next token
-                    // it should persist until we hit the "close" token
                     self.bold_active = true;
                     self.consume();
-                    //let token_val = &self.current_token().unwrap().value;
-                    //self.add_to_output(&token_val);
-                    //self.consume();
                 }
-                "R" => {
+                "R" | "P" => {
                     self.bold_active = false;
                     self.consume();
                 }
@@ -281,10 +269,11 @@ where
             if !tok.starts_line {
                 // there's an argument to .sp
                 println!("parsing .sp arg: {}", tok.value);
-                let arg_linebreaks: i32 = tok.value.parse().unwrap();
 
-                if arg_linebreaks > 0 {
-                    linebreaks += arg_linebreaks;
+                if let Ok(parsed) = tok.value.parse::<i32>() {
+                    if parsed > 0 {
+                        linebreaks += parsed;
+                    }
                 }
 
                 self.consume();
