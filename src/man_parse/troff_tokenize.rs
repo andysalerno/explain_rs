@@ -20,6 +20,12 @@ pub enum TroffToken {
     CommandArg,
 }
 
+/// Used when parsing macro arguments --
+/// the str is the argument itself,
+/// the usize is the full size of the args
+/// section
+struct MacroArgs<'a>(&'a str, usize);
+
 // TODO: implement #[derive(TokenClass)] macro...
 impl TokenClass for TroffToken {}
 
@@ -64,29 +70,29 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
                 if special_class == TroffToken::Backslash {
                     if let Some(next) = peek_iter.next() {
                         let next_index = next.0;
-                        let next_char = next.1;
+                        let command_char = next.1;
 
                         let escaped =
-                            Token::new(TroffToken::EscapeCommand, next_char.to_string(), false);
+                            Token::new(TroffToken::EscapeCommand, command_char.to_string(), false);
 
                         tokens.push(escaped);
                         base_index = next_index + 1;
 
                         // after the escaped token, we might now have arguments
                         // i.e., '\fB' takes arg 'B'
-                        let args = get_args(next_char, &word[next_index + 1..]);
+                        let args = get_escaped_args(command_char, &word[next_index + 1..]);
 
-                        if args.len() > 0 {
+                        if args.1 > 0 {
                             let args_tok =
-                                Token::new(TroffToken::CommandArg, args.to_string(), false);
+                                Token::new(TroffToken::CommandArg, args.0.to_string(), false);
 
                             tokens.push(args_tok);
 
-                            for _ in 0..args.len() {
+                            for _ in 0..args.1 {
                                 peek_iter.next();
                             }
 
-                            base_index += args.len();
+                            base_index += args.1;
                         }
                     }
                 }
@@ -117,18 +123,47 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
 /// like '\fB' where the escape command is 'f'
 /// and the arg is 'B'.
 ///
+/// Others take no args at all, like \-.
+///
 /// Given a command char, and the slice immediately following it,
-/// return which subset of the slice is made up of args.
+/// return which subset of the slice is made up of args (empty slice if none).
 ///
 /// i.e., given command 'f' and word 'BHello',
-/// the result should be 'B'.
-fn get_args(command_char: char, word: &str) -> &str {
+/// the result should be '[B]'.
+fn get_escaped_args(command_char: char, potential_args: &str) -> MacroArgs {
     match command_char {
-        'f' => &word[0..1],
+        'f' => get_command_args(&potential_args),
+        '(' => MacroArgs(&potential_args[0..2], 2),
 
         // these commands take no args, so always empty slice
-        '-' => &word[0..0],
-        _ => &word[0..0],
+        '-' => MacroArgs(&potential_args[0..0], 0),
+        _ => MacroArgs(&potential_args[0..0], 0),
+    }
+}
+
+fn get_command_args(word: &str) -> MacroArgs {
+    if word.len() == 0 {
+        return MacroArgs(word, 0);
+    }
+
+    match &word[0..1] {
+        // example: \m[blue]BlueText
+        "[" => {
+            let close_index = word.find(']');
+
+            let result = &word[1..close_index.unwrap()];
+
+            println!("found argument: {} inside: {}", result, word);
+
+            // + 2 for the '[' and ']'
+            MacroArgs(result, result.len() + 2)
+        }
+
+        // example: \f(abSomeFormat
+        "(" => MacroArgs(&word[1..3], 3),
+
+        // anything else is just 1 char long
+        _ => MacroArgs(&word[0..1], 1),
     }
 }
 

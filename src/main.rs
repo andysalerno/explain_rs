@@ -7,13 +7,13 @@ use std::fs::File;
 use std::io::Read;
 use std::process::Command;
 use man_parse::troff_parser::{ManSection, TroffParser};
-use text_format::text_format::TextFormat;
 
 struct ExplainArgs {
     command_name: String,
     command_args: Vec<String>,
 
     explain_args: Vec<String>,
+    debug: bool,
 }
 
 fn main() {
@@ -35,20 +35,17 @@ fn main() {
         read_file_content(&man_path)
     };
 
-    // if !is_troff(&man_text) {
-    //     println!("Man text does not appear to be troff.");
-    // }
-
     let classifier = man_parse::troff_tokenize::TroffClassifier {};
     let tokenized = simple_parser::tokenizer::tokenize(&man_text, &classifier);
 
-    // for tok in &tokenized {
-    //     println!("{:?}", tok);
-    // }
+    if args.debug {
+        for tok in &tokenized {
+            println!("{:?}", tok);
+        }
+    }
 
     let mut parser = match section {
         None => TroffParser::new(),
-        // TODO: for now, I'm saying every -s argument is for Synopsis...
         Some(s) => TroffParser::for_section(ManSection::from(s.as_str())),
     };
 
@@ -77,6 +74,7 @@ fn argparse() -> ExplainArgs {
         command_name: String::new(),
         command_args: Vec::new(),
         explain_args: Vec::new(),
+        debug: false,
     };
 
     for (i, arg) in args.iter().enumerate() {
@@ -99,6 +97,13 @@ fn argparse() -> ExplainArgs {
         } else {
             // everything after '--' is an arg to the 'explain' bin itself
             result.explain_args.push(arg.to_owned());
+
+            match arg.as_str() {
+                "-d" => {
+                    result.debug = true;
+                }
+                _ => {}
+            }
         }
     }
 

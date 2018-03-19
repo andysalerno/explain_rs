@@ -1,5 +1,6 @@
 use man_parse::troff_tokenize::TroffToken;
 use simple_parser::token::Token;
+use text_format::text_format::TextFormat;
 
 #[derive(Debug, PartialEq)]
 pub enum ManSection {
@@ -22,6 +23,7 @@ impl<'a> From<&'a str> for ManSection {
     }
 }
 
+// TODO: use these in the tokenizer
 // enum TroffMacros {
 //     TH,
 //     RB,
@@ -88,8 +90,9 @@ where
         self.consume();
 
         while let Some(cur_tok) = self.current_token() {
-            let cur_tok_val = Self::format_token(cur_tok);
-            self.add_to_before_output(&cur_tok_val);
+            // TODO: remove cur_tok_val, the method, the next line
+            // let cur_tok_val = Self::format_token(cur_tok);
+            // self.add_to_before_output(&cur_tok_val);
 
             if self.nofill_active && cur_tok.starts_line {
                 self.add_to_output(LINEBREAK);
@@ -102,6 +105,8 @@ where
                     ".br" => self.parse_br(),
                     ".nf" => self.parse_nf(),
                     ".fi" => self.parse_fi(),
+                    ".B" => self.parse_b(),
+                    ".I" => self.parse_i(),
                     _ => self.consume(),
                 }
             } else if cur_tok.class == TroffToken::Backslash {
@@ -113,6 +118,34 @@ where
             } else {
                 self.consume();
             }
+        }
+    }
+
+    fn parse_b(&mut self) {
+        self.consume();
+
+        while let Some(cur_tok) = self.current_token() {
+            if cur_tok.starts_line {
+                break;
+            }
+
+            self.add_to_output(&cur_tok.value.bold());
+
+            self.consume();
+        }
+    }
+
+    fn parse_i(&mut self) {
+        self.consume();
+
+        while let Some(cur_tok) = self.current_token() {
+            if cur_tok.starts_line {
+                break;
+            }
+
+            self.add_to_output(&cur_tok.value.italic());
+
+            self.consume();
         }
     }
 
@@ -174,7 +207,55 @@ where
 
         match cur_tok.value.as_str() {
             "-" => self.add_to_output("-"),
+            "(" => self.parse_special_character(),
+            "f" => self.parse_font_format(),
+            "m" => self.parse_color_format(),
             _ => self.consume(),
+        }
+    }
+
+    fn parse_special_character(&mut self) {
+        self.consume_it("(");
+
+        if let Some(tok) = self.current_token() {
+            match tok.value.as_str() {
+                "cq" => self.add_to_output("'"),
+                _ => {}
+            }
+        }
+    }
+
+    fn parse_font_format(&mut self) {
+        self.consume_it("f");
+
+        // next arg must be the formatting choice
+        if let Some(tok) = self.current_token() {
+            match tok.value.as_str() {
+                "B" => {
+                    // TODO: this is too simple, we should not bold just the very next token
+                    // it should persist until we hit the "close" token
+                    self.consume();
+                    let bold = self.current_token().unwrap().value.bold();
+                    self.add_to_output(&bold);
+                    self.consume();
+                }
+                _ => self.consume(),
+            }
+        }
+    }
+
+    fn parse_color_format(&mut self) {
+        self.consume_it("m");
+
+        // we now have an argument pattern
+        // \mc
+        // \m(co
+        // \m[color]
+        if let Some(tok) = self.current_token() {
+            match tok.value.as_str() {
+                "[" => {}
+                _ => self.consume(),
+            }
         }
     }
 
@@ -250,6 +331,15 @@ where
 
     fn consume(&mut self) {
         self.current_token = self.tokens.as_mut().unwrap().next();
+
+        if let Some(tok) = self.current_token {
+            self.add_to_before_output(&Self::format_token(tok));
+        }
+    }
+
+    fn consume_it(&mut self, it: &str) {
+        assert!(it == self.current_token.unwrap().value);
+        self.consume();
     }
 
     /// same as consume(), but asserts that the very next token is on the same line
