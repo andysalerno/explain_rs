@@ -39,6 +39,7 @@ impl<'a> From<&'a str> for ManSection {
 }
 
 const LINEBREAK: &str = "\n";
+const SPACE: &str = " ";
 
 pub struct TroffParser<'a, I>
 where
@@ -107,6 +108,8 @@ where
                     ".fi" => self.parse_fi(),
                     ".B" => self.parse_b(),
                     ".I" => self.parse_i(),
+                    ".TP" => self.parse_tp(),
+                    ".PD" => self.parse_pd(),
                     ".PP" | ".LP" | ".P" => self.parse_p(),
                     //_ => self.consume(),
                     _ => {
@@ -133,6 +136,25 @@ where
         self.add_to_output(LINEBREAK);
     }
 
+    /// sets the indent value
+    /// if no argument is provided
+    /// default to 0.
+    fn parse_pd(&mut self) {
+        self.consume_it(".PD");
+
+        let mut indent = 0;
+
+        if let Some(tok) = self.current_token() {
+            if !tok.starts_line {
+                indent = tok.value.parse::<usize>().unwrap();
+            }
+
+            self.consume();
+        }
+
+        self.font_style.indent = indent;
+    }
+
     /// .TP [Indent]
     /// The next input line that contains text is the "tag".
     /// The tag is printed at the normal indent, and then on the same line
@@ -156,6 +178,14 @@ where
         } else {
             self.font_style.indent
         };
+
+        // next text line is the tag
+        self.parse_remaining_line();
+
+        // now, on the same line, add [space * indent]
+        for _ in 0..indent_count {
+            self.add_to_output(SPACE);
+        }
     }
 
     fn parse_b(&mut self) {
