@@ -11,6 +11,21 @@ pub enum ManSection {
     Options,
 }
 
+#[derive(Default)]
+struct FontStyle {
+    bold: bool,
+    italic: bool,
+    underlined: bool,
+
+    /// is no-fill mode active?
+    /// prints lines "as-is", including whitespace.
+    /// enabled with macro ".nf", disabled with ".fi"
+    nofill: bool,
+
+    /// The current text indent
+    indent: usize,
+}
+
 impl<'a> From<&'a str> for ManSection {
     fn from(s: &str) -> Self {
         match s.to_lowercase().as_str() {
@@ -22,18 +37,6 @@ impl<'a> From<&'a str> for ManSection {
         }
     }
 }
-
-// TODO: use these in the tokenizer
-// enum TroffMacros {
-//     TH,
-//     RB,
-//     I,
-//     SH,
-//     ll,
-//     B,
-//     PP,
-//     IR,
-// }
 
 const LINEBREAK: &str = "\n";
 
@@ -54,12 +57,7 @@ where
     /// if a section was requested via '-s', this is the requested section
     parse_section: Option<ManSection>,
 
-    /// is no-fill mode active?
-    /// prints lines "as-is", including whitespace.
-    /// enabled with macro ".nf", disabled with ".fi"
-    nofill_active: bool,
-
-    bold_active: bool,
+    font_style: FontStyle,
 }
 
 impl<'a, I> TroffParser<'a, I>
@@ -68,14 +66,13 @@ where
 {
     pub fn new() -> Self {
         TroffParser {
+            tokens: Default::default(),
+            current_token: Default::default(),
+            current_section: Default::default(),
             section_text: Default::default(),
             before_section_text: Default::default(),
-            parse_section: None,
-            current_section: None,
-            tokens: None,
-            current_token: None,
-            nofill_active: false,
-            bold_active: false,
+            parse_section: Default::default(),
+            font_style: Default::default(),
         }
     }
 
@@ -97,7 +94,7 @@ where
             // let cur_tok_val = Self::format_token(cur_tok);
             // self.add_to_before_output(&cur_tok_val);
 
-            if self.nofill_active && cur_tok.starts_line {
+            if self.font_style.nofill && cur_tok.starts_line {
                 self.add_to_output(LINEBREAK);
             }
 
@@ -110,7 +107,12 @@ where
                     ".fi" => self.parse_fi(),
                     ".B" => self.parse_b(),
                     ".I" => self.parse_i(),
-                    _ => self.consume(),
+                    ".PP" | ".LP" | ".P" => self.parse_p(),
+                    //_ => self.consume(),
+                    _ => {
+                        println!("[skipping unknown macro: {:?}", cur_tok.value);
+                        self.parse_remaining_line();
+                    }
                 }
             } else if cur_tok.class == TroffToken::Backslash {
                 self.parse_backslash();
@@ -124,18 +126,59 @@ where
         }
     }
 
-    fn parse_b(&mut self) {
+    fn parse_p(&mut self) {
         self.consume();
 
-        while let Some(cur_tok) = self.current_token() {
-            if cur_tok.starts_line {
-                break;
-            }
+        self.add_to_output(LINEBREAK);
+        self.add_to_output(LINEBREAK);
+    }
 
-            self.add_to_output(&cur_tok.value.bold());
+    /// .TP [Indent]
+    /// The next input line that contains text is the "tag".
+    /// The tag is printed at the normal indent, and then on the same line
+    /// the remaining text is given at the [Index] distance.  If the tag is
+    /// larger than the [Indent], the text begins on the next line.
+    /// If no [Indent] is provided, use the default or the previous one.
+    fn parse_tp(&mut self) {
+        self.consume_it(".TP");
 
-            self.consume();
+        if self.current_token().is_none() {
+            return;
         }
+
+        let cur_tok = self.current_token().unwrap();
+
+        let indent_count = if !cur_tok.starts_line {
+            let parsed_indent = cur_tok.value.parse::<usize>().unwrap();
+            self.font_style.indent = parsed_indent;
+
+            parsed_indent
+        } else {
+            self.font_style.indent
+        };
+    }
+
+    fn parse_b(&mut self) {
+        self.consume();
+        self.font_style.bold = true;
+
+        self.parse_remaining_line();
+
+        self.font_style.bold = false;
+
+        // while let Some(cur_tok) = self.current_token() {
+        //     if cur_tok.starts_line {
+        //         break;
+        //     }
+
+        //     if cur_tok.class == TroffToken::Backslash {
+        //         self.parse_backslash();
+        //     } else {
+        //         self.add_to_output(&cur_tok.value.bold());
+
+        //         self.consume();
+        //     }
+        // }
     }
 
     fn parse_i(&mut self) {
@@ -161,12 +204,12 @@ where
     fn parse_nf(&mut self) {
         // nofill mode also adds a linebreak
         self.add_to_output(LINEBREAK);
-        self.nofill_active = true;
+        self.font_style.nofill = true;
         self.consume();
     }
 
     fn parse_fi(&mut self) {
-        self.nofill_active = false;
+        self.font_style.nofill = false;
         self.consume();
     }
 
@@ -182,7 +225,7 @@ where
 
     fn add_to_output(&mut self, s: &str) {
         if self.parse_section.is_some() && self.parse_section == self.current_section {
-            if self.bold_active {
+            if self.font_style.bold {
                 let bold = s.bold();
                 self.section_text.push_str(&bold);
             } else {
@@ -207,12 +250,17 @@ where
         let cur_tok = self.current_token().unwrap();
 
         match cur_tok.value.as_str() {
-            "-" => self.add_to_output("-"),
+            "-" => self.parse_hyphen(),
             "(" => self.parse_special_character(),
             "f" => self.parse_font_format(),
             "m" => self.parse_color_format(),
             _ => self.consume(),
         }
+    }
+
+    fn parse_hyphen(&mut self) {
+        self.consume_it("-");
+        self.add_to_output("-");
     }
 
     fn parse_special_character(&mut self) {
@@ -233,11 +281,11 @@ where
         if let Some(tok) = self.current_token() {
             match tok.value.as_str() {
                 "B" => {
-                    self.bold_active = true;
+                    self.font_style.bold = true;
                     self.consume();
                 }
                 "R" | "P" => {
-                    self.bold_active = false;
+                    self.font_style.bold = false;
                     self.consume();
                 }
                 _ => self.consume(),
@@ -298,12 +346,6 @@ where
             self.parse_doublequote();
         }
 
-        // println!(
-        //     "current tok: {}\nclass: {:?}",
-        //     self.current_token().unwrap().value,
-        //     self.current_token().unwrap().class
-        // );
-
         if let Some(cur_tok) = self.current_token() {
             self.current_section = match cur_tok.value.as_str() {
                 "NAME" => Some(ManSection::Name),
@@ -315,8 +357,6 @@ where
         }
 
         self.parse_word();
-
-        //println!("Set section to: {:?}", self.current_section);
     }
 
     fn format_token(token: I::Item) -> String {
@@ -335,6 +375,26 @@ where
     fn parse_doublequote(&mut self) {
         assert!(self.current_token().unwrap().class == TroffToken::DoubleQuote);
         self.consume();
+    }
+
+    /// consume all tokens until the end of the line,
+    /// so that the resulting current token is the first of the next line.
+    /// Assumes first token is a Macro that will get consumed without any consideration.
+    fn parse_remaining_line(&mut self) {
+        self.consume();
+
+        while let Some(tok) = self.current_token() {
+            if tok.starts_line {
+                break;
+            }
+
+            if tok.class == TroffToken::Backslash {
+                self.parse_backslash();
+            } else {
+                self.add_to_output(&tok.value);
+                self.consume();
+            }
+        }
     }
 
     fn consume(&mut self) {
