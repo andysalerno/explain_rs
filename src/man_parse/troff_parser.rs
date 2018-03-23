@@ -77,6 +77,8 @@ where
         }
     }
 
+    /// TODO: idiomatically, this should take "self",
+    /// and be invoked like "Parser::new().for_section(...)"
     pub fn for_section(section: ManSection) -> Self {
         println!("creating parser for section: {:?}", section);
         let mut p = Self::new();
@@ -91,40 +93,66 @@ where
         self.consume();
 
         while let Some(cur_tok) = self.current_token() {
-            // TODO: remove cur_tok_val, the method, the next line
-            // let cur_tok_val = Self::format_token(cur_tok);
-            // self.add_to_before_output(&cur_tok_val);
-
             if self.font_style.nofill && cur_tok.starts_line {
                 self.add_to_output(LINEBREAK);
             }
 
             if cur_tok.class == TroffToken::Macro {
-                match cur_tok.value.as_str() {
-                    ".SH" => self.parse_sh(),
-                    ".sp" => self.parse_sp(),
-                    ".br" => self.parse_br(),
-                    ".nf" => self.parse_nf(),
-                    ".fi" => self.parse_fi(),
-                    ".B" => self.parse_b(),
-                    ".I" => self.parse_i(),
-                    ".TP" => self.parse_tp(),
-                    ".PD" => self.parse_pd(),
-                    ".PP" | ".LP" | ".P" => self.parse_p(),
-                    //_ => self.consume(),
-                    _ => {
-                        println!("[skipping unknown macro: {:?}", cur_tok.value);
-                        self.parse_remaining_line();
-                    }
-                }
-            } else if cur_tok.class == TroffToken::Backslash {
-                self.parse_backslash();
-            } else if cur_tok.class == TroffToken::TextWord {
-                self.parse_textword();
-            } else if cur_tok.class == TroffToken::Space {
-                self.parse_space();
+                self.parse_macro();
             } else {
-                self.consume();
+                self.parse_line();
+            }
+        }
+    }
+
+    fn parse_macro(&mut self) {
+        if let Some(tok) = self.current_token() {
+            assert_eq!(tok.class, TroffToken::Macro);
+            match tok.value.as_str() {
+                ".SH" => self.parse_sh(),
+                ".sp" => self.parse_sp(),
+                ".br" => self.parse_br(),
+                ".nf" => self.parse_nf(),
+                ".fi" => self.parse_fi(),
+                ".B" => self.parse_b(),
+                ".I" => self.parse_i(),
+                ".TP" => self.parse_tp(),
+                ".PD" => self.parse_pd(),
+                ".PP" | ".LP" | ".P" => self.parse_p(),
+                _ => {
+                    self.add_to_before_output(&format!(
+                        "[skipping unknown macro: {:?}]",
+                        tok.value
+                    ));
+
+                    self.consume();
+                    self.parse_line();
+                }
+            }
+        }
+    }
+
+    /// parse all tokens until the end of the line,
+    /// so that the resulting current token is the first of the next line.
+    fn parse_line(&mut self) {
+        while let Some(tok) = self.current_token() {
+            // TODO: performance -- branch prediction might
+            // not like alternating space/textword so much
+            // maybe unify both if it comes down to it
+            if tok.class == TroffToken::Backslash {
+                self.parse_backslash();
+            } else if tok.class == TroffToken::Space {
+                self.parse_space();
+            } else if tok.class == TroffToken::DoubleQuote {
+                self.parse_doublequote();
+            } else {
+                self.parse_textword();
+            }
+
+            if let Some(next_tok) = self.current_token() {
+                if next_tok.starts_line {
+                    break;
+                }
             }
         }
     }
@@ -164,15 +192,18 @@ where
     fn parse_tp(&mut self) {
         self.consume_it(".TP");
 
-        if self.current_token().is_none() {
+        let cur_tok = if let Some(tok) = self.current_token() {
+            tok
+        } else {
             return;
-        }
-
-        let cur_tok = self.current_token().unwrap();
+        };
 
         let indent_count = if !cur_tok.starts_line {
             let parsed_indent = cur_tok.value.parse::<usize>().unwrap();
             self.font_style.indent = parsed_indent;
+
+            // consume the optional TP indent argument
+            self.consume();
 
             parsed_indent
         } else {
@@ -180,7 +211,7 @@ where
         };
 
         // next text line is the tag
-        self.parse_remaining_line();
+        self.parse_line();
 
         // now, on the same line, add [space * indent]
         for _ in 0..indent_count {
@@ -192,23 +223,9 @@ where
         self.consume();
         self.font_style.bold = true;
 
-        self.parse_remaining_line();
+        self.parse_line();
 
         self.font_style.bold = false;
-
-        // while let Some(cur_tok) = self.current_token() {
-        //     if cur_tok.starts_line {
-        //         break;
-        //     }
-
-        //     if cur_tok.class == TroffToken::Backslash {
-        //         self.parse_backslash();
-        //     } else {
-        //         self.add_to_output(&cur_tok.value.bold());
-
-        //         self.consume();
-        //     }
-        // }
     }
 
     fn parse_i(&mut self) {
@@ -227,7 +244,18 @@ where
 
     fn parse_textword(&mut self) {
         let cur_tok = self.current_token().unwrap();
+        // assert_eq!(
+        //     cur_tok.class,
+        //     TroffToken::TextWord,
+        //     "saw tok: {:?}",
+        //     cur_tok.value
+        // );
         self.add_to_output(&cur_tok.value);
+        self.consume();
+    }
+
+    fn parse_space(&mut self) {
+        self.add_to_output(" ");
         self.consume();
     }
 
@@ -245,11 +273,6 @@ where
 
     fn parse_br(&mut self) {
         self.add_to_output(LINEBREAK);
-        self.consume();
-    }
-
-    fn parse_space(&mut self) {
-        self.add_to_output(" ");
         self.consume();
     }
 
@@ -407,10 +430,16 @@ where
         self.consume();
     }
 
-    /// consume all tokens until the end of the line,
-    /// so that the resulting current token is the first of the next line.
-    /// Assumes first token is a Macro that will get consumed without any consideration.
-    fn parse_remaining_line(&mut self) {
+    fn consume(&mut self) {
+        self.current_token = self.tokens.as_mut().unwrap().next();
+
+        if let Some(tok) = self.current_token {
+            self.add_to_before_output(&Self::format_token(tok));
+        }
+    }
+
+    /// Consume until the current token starts a new line
+    fn consume_line(&mut self) {
         self.consume();
 
         while let Some(tok) = self.current_token() {
@@ -418,20 +447,7 @@ where
                 break;
             }
 
-            if tok.class == TroffToken::Backslash {
-                self.parse_backslash();
-            } else {
-                self.add_to_output(&tok.value);
-                self.consume();
-            }
-        }
-    }
-
-    fn consume(&mut self) {
-        self.current_token = self.tokens.as_mut().unwrap().next();
-
-        if let Some(tok) = self.current_token {
-            self.add_to_before_output(&Self::format_token(tok));
+            self.consume();
         }
     }
 
