@@ -1,15 +1,7 @@
 use man_parse::troff_tokenize::TroffToken;
 use simple_parser::token::Token;
 use text_format::text_format::TextFormat;
-
-#[derive(Debug, PartialEq)]
-pub enum ManSection {
-    Unknown,
-    Name,
-    Synopsis,
-    Description,
-    Options,
-}
+use man_parse::man_section::ManSection;
 
 #[derive(Default)]
 struct FontStyle {
@@ -24,18 +16,6 @@ struct FontStyle {
 
     /// The current text indent
     indent: usize,
-}
-
-impl<'a> From<&'a str> for ManSection {
-    fn from(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
-            "name" => ManSection::Name,
-            "synopsis" => ManSection::Synopsis,
-            "options" => ManSection::Options,
-            "description" => ManSection::Description,
-            _ => ManSection::Unknown,
-        }
-    }
 }
 
 const LINEBREAK: &str = "\n";
@@ -58,6 +38,7 @@ where
     /// if a section was requested via '-s', this is the requested section
     parse_section: Option<ManSection>,
 
+    /// current state of font styling
     font_style: FontStyle,
 }
 
@@ -114,10 +95,10 @@ where
                 ".br" => self.parse_br(),
                 ".nf" => self.parse_nf(),
                 ".fi" => self.parse_fi(),
-                ".B" => self.parse_b(),
-                ".I" => self.parse_i(),
                 ".TP" => self.parse_tp(),
                 ".PD" => self.parse_pd(),
+                ".B" => self.parse_b(),
+                ".I" => self.parse_i(),
                 ".PP" | ".LP" | ".P" => self.parse_p(),
                 _ => {
                     self.add_to_before_output(&format!(
@@ -126,7 +107,6 @@ where
                     ));
 
                     self.consume();
-                    self.parse_line();
                 }
             }
         }
@@ -139,14 +119,11 @@ where
             // TODO: performance -- branch prediction might
             // not like alternating space/textword so much
             // maybe unify both if it comes down to it
-            if tok.class == TroffToken::Backslash {
-                self.parse_backslash();
-            } else if tok.class == TroffToken::Space {
-                self.parse_space();
-            } else if tok.class == TroffToken::DoubleQuote {
-                self.parse_doublequote();
-            } else {
-                self.parse_textword();
+            match tok.class {
+                TroffToken::Backslash => self.parse_backslash(),
+                TroffToken::Space => self.parse_space(),
+                TroffToken::DoubleQuote => self.parse_doublequote(),
+                _ => self.parse_textword(),
             }
 
             if let Some(next_tok) = self.current_token() {
@@ -157,6 +134,7 @@ where
         }
     }
 
+    /// Adds a full line break.  Also resets indentation and font to initial values.
     fn parse_p(&mut self) {
         self.consume();
 
@@ -164,9 +142,10 @@ where
         self.add_to_output(LINEBREAK);
     }
 
-    /// sets the indent value
-    /// if no argument is provided
-    /// default to 0.
+    /// .PD [Distance]
+    /// Sets paragraph distance.
+    /// If no argument is provided, default to 0.
+    /// TODO: I think the implementation is wrong here??
     fn parse_pd(&mut self) {
         self.consume_it(".PD");
 
@@ -219,6 +198,8 @@ where
         }
     }
 
+    /// Sets the rest of the line to bold,
+    /// or the very next line if there are no same-line values.
     fn parse_b(&mut self) {
         self.consume();
         self.font_style.bold = true;
@@ -228,52 +209,43 @@ where
         self.font_style.bold = false;
     }
 
+    /// Sets the rest of the line to bold,
+    /// or the very next line if there are no same-line values.
     fn parse_i(&mut self) {
         self.consume();
-
-        while let Some(cur_tok) = self.current_token() {
-            if cur_tok.starts_line {
-                break;
-            }
-
-            self.add_to_output(&cur_tok.value.italic());
-
-            self.consume();
-        }
+        self.font_style.italic = true;
+        self.parse_line();
+        self.font_style.italic = false;
     }
 
     fn parse_textword(&mut self) {
         let cur_tok = self.current_token().unwrap();
-        // assert_eq!(
-        //     cur_tok.class,
-        //     TroffToken::TextWord,
-        //     "saw tok: {:?}",
-        //     cur_tok.value
-        // );
         self.add_to_output(&cur_tok.value);
         self.consume();
     }
 
     fn parse_space(&mut self) {
-        self.add_to_output(" ");
         self.consume();
+        self.add_to_output(SPACE);
     }
 
+    /// Begin no-fill mode, and add a linebreak.
     fn parse_nf(&mut self) {
-        // nofill mode also adds a linebreak
+        self.consume();
         self.add_to_output(LINEBREAK);
         self.font_style.nofill = true;
-        self.consume();
     }
 
+    /// Ends no-fill mode.
     fn parse_fi(&mut self) {
-        self.font_style.nofill = false;
         self.consume();
+        self.font_style.nofill = false;
     }
 
+    /// Adds a linebreak.
     fn parse_br(&mut self) {
-        self.add_to_output(LINEBREAK);
         self.consume();
+        self.add_to_output(LINEBREAK);
     }
 
     fn add_to_output(&mut self, s: &str) {
@@ -293,32 +265,33 @@ where
         }
     }
 
+    /// Parses a backslash, which escapes some value.
+    /// A simple example is '\-', which evaluates to '-'.
+    /// A more complicated example is '\fBHello', which
+    /// prints 'Hello' in bold.
     fn parse_backslash(&mut self) {
         self.consume();
 
-        if self.current_token().is_none() {
-            return;
-        }
-
-        let cur_tok = self.current_token().unwrap();
-
-        match cur_tok.value.as_str() {
-            "-" => self.parse_hyphen(),
-            "(" => self.parse_special_character(),
-            "f" => self.parse_font_format(),
-            "m" => self.parse_color_format(),
-            _ => self.consume(),
+        if let Some(tok) = self.current_token() {
+            match tok.value.as_str() {
+                "-" => self.parse_hyphen(),
+                "(" => self.parse_special_character(),
+                "f" => self.parse_font_format(),
+                "m" => self.parse_color_format(),
+                _ => self.consume(),
+            }
         }
     }
 
+    /// \- gives '-'
     fn parse_hyphen(&mut self) {
         self.consume_it("-");
         self.add_to_output("-");
     }
 
+    /// \(cq gives "'"
     fn parse_special_character(&mut self) {
         self.consume_it("(");
-
         if let Some(tok) = self.current_token() {
             match tok.value.as_str() {
                 "cq" => self.add_to_output("'"),
@@ -329,9 +302,8 @@ where
 
     fn parse_font_format(&mut self) {
         self.consume_it("f");
-
-        // next arg must be the formatting choice
         if let Some(tok) = self.current_token() {
+            // next arg must be the formatting choice
             match tok.value.as_str() {
                 "B" => {
                     self.font_style.bold = true;
@@ -348,12 +320,11 @@ where
 
     fn parse_color_format(&mut self) {
         self.consume_it("m");
-
-        // we now have an argument pattern
-        // \mc
-        // \m(co
-        // \m[color]
         if let Some(tok) = self.current_token() {
+            // we now have an argument pattern
+            // \mc
+            // \m(co
+            // \m[color]
             match tok.value.as_str() {
                 "[" => {}
                 _ => self.consume(),
@@ -361,6 +332,9 @@ where
         }
     }
 
+    /// .SP [LineCount]
+    /// Adds some amount of spacing lines,
+    /// defaulting to two if no arguments
     fn parse_sp(&mut self) {
         self.consume_it(".sp");
 
@@ -369,11 +343,11 @@ where
         if let Some(tok) = self.current_token() {
             if !tok.starts_line {
                 // there's an argument to .sp
-                println!("parsing .sp arg: {}", tok.value);
-
                 if let Ok(parsed) = tok.value.parse::<i32>() {
                     if parsed > 0 {
                         linebreaks += parsed;
+                    } else {
+                        println!("warning: parsed .sp value < 0, of {}", parsed);
                     }
                 }
 
@@ -386,14 +360,13 @@ where
         }
     }
 
+    /// .SH SubheaderName
+    /// example: ".SH options"
+    /// This is not implemented correctly, as
+    /// you can use quotes to captures spaces and multiple words.
+    /// This currently only captures one word, and assumes doublequotes.
     fn parse_sh(&mut self) {
-        assert!(
-            self.current_token().unwrap().value == ".SH",
-            "found: {}",
-            self.current_token().unwrap().value
-        );
-
-        self.consume_sameline();
+        self.consume();
 
         if self.current_token.unwrap().class == TroffToken::DoubleQuote {
             self.parse_doublequote();
@@ -454,15 +427,6 @@ where
     fn consume_it(&mut self, it: &str) {
         assert!(it == self.current_token.unwrap().value);
         self.consume();
-    }
-
-    /// same as consume(), but asserts that the very next token is on the same line
-    fn consume_sameline(&mut self) {
-        self.consume();
-
-        if let Some(token) = self.current_token {
-            assert!(!token.starts_line);
-        }
     }
 
     fn current_token(&self) -> Option<I::Item> {

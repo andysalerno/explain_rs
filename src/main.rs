@@ -6,7 +6,8 @@ use std::env;
 use std::fs::File;
 use std::io::Read;
 use std::process::Command;
-use man_parse::troff_parser::{ManSection, TroffParser};
+use man_parse::troff_parser::TroffParser;
+use man_parse::man_section::ManSection;
 
 struct ExplainArgs {
     command_name: String,
