@@ -75,7 +75,8 @@ where
 
         while let Some(cur_tok) = self.current_token() {
             if self.font_style.nofill && cur_tok.starts_line {
-                self.add_to_output(LINEBREAK);
+                //self.add_to_output(LINEBREAK);
+                self.add_linebreak();
             }
 
             if cur_tok.class == TroffToken::Macro {
@@ -99,6 +100,7 @@ where
                 ".PD" => self.parse_pd(),
                 ".B" => self.parse_b(),
                 ".I" => self.parse_i(),
+                ".IR" => self.parse_ir(),
                 ".PP" | ".LP" | ".P" => self.parse_p(),
                 _ => {
                     self.add_to_before_output(&format!(
@@ -134,12 +136,30 @@ where
         }
     }
 
+    /// .P, .PP, or .LP (all mutual aliases)
     /// Adds a full line break.  Also resets indentation and font to initial values.
     fn parse_p(&mut self) {
         self.consume();
 
+        // TODO: just recreate the default FontStyle
+        self.font_style.indent = 0;
+        self.font_style.bold = false;
+        self.font_style.italic = false;
+        self.font_style.underlined = false;
+
+        self.add_linebreak();
+        self.add_linebreak();
+    }
+
+    /// Add a linebreak to the output,
+    /// and also indent from the left based on the current style.
+    fn add_linebreak(&mut self) {
         self.add_to_output(LINEBREAK);
-        self.add_to_output(LINEBREAK);
+
+        // newlines must receive the current left-margin indent
+        for _ in 0..self.font_style.indent {
+            self.add_to_output(SPACE);
+        }
     }
 
     /// .PD [Distance]
@@ -218,6 +238,33 @@ where
         self.font_style.italic = false;
     }
 
+    /// Alternates between italic and regular.
+    fn parse_ir(&mut self) {
+        self.consume_it(".IR");
+
+        let mut italic = true;
+
+        while let Some(tok) = self.current_token() {
+            if tok.starts_line {
+                break;
+            }
+            if tok.class == TroffToken::Space {
+                self.parse_textword();
+                continue;
+            }
+
+            if italic {
+                self.font_style.underlined = true;
+                self.parse_textword();
+                self.font_style.underlined = false;
+            } else {
+                self.parse_textword();
+            }
+
+            italic = !italic;
+        }
+    }
+
     fn parse_textword(&mut self) {
         let cur_tok = self.current_token().unwrap();
         self.add_to_output(&cur_tok.value);
@@ -245,7 +292,8 @@ where
     /// Adds a linebreak.
     fn parse_br(&mut self) {
         self.consume();
-        self.add_to_output(LINEBREAK);
+        //self.add_to_output(LINEBREAK);
+        self.add_linebreak();
     }
 
     fn add_to_output(&mut self, s: &str) {
@@ -253,6 +301,12 @@ where
             if self.font_style.bold {
                 let bold = s.bold();
                 self.section_text.push_str(&bold);
+            } else if self.font_style.italic {
+                let italic = s.underlined();
+                self.section_text.push_str(&italic);
+            } else if self.font_style.underlined {
+                let underlined = s.underlined();
+                self.section_text.push_str(&underlined);
             } else {
                 self.section_text.push_str(s);
             }
@@ -295,6 +349,7 @@ where
         if let Some(tok) = self.current_token() {
             match tok.value.as_str() {
                 "cq" => self.add_to_output("'"),
+                // also lq, rq, oq apparently, TODO
                 _ => {}
             }
         }
@@ -332,7 +387,7 @@ where
         }
     }
 
-    /// .SP [LineCount]
+    /// .sp [LineCount]
     /// Adds some amount of spacing lines,
     /// defaulting to two if no arguments
     fn parse_sp(&mut self) {
@@ -356,7 +411,8 @@ where
         }
 
         for _ in 0..linebreaks {
-            self.add_to_output(LINEBREAK);
+            //self.add_to_output(LINEBREAK);
+            self.add_linebreak();
         }
     }
 
