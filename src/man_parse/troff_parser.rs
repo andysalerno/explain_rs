@@ -73,17 +73,27 @@ where
         // consume once to move to the first token
         self.consume();
 
-        while let Some(cur_tok) = self.current_token() {
-            if self.font_style.nofill && cur_tok.starts_line {
-                //self.add_to_output(LINEBREAK);
-                self.add_linebreak();
-            }
+        while self.current_token().is_some() {
+            self.parse_token();
+        }
+    }
 
-            if cur_tok.class == TroffToken::Macro {
-                self.parse_macro();
-            } else {
-                self.parse_line();
-            }
+    fn parse_token(&mut self) {
+        let tok = if self.current_token().is_some() {
+            self.current_token().unwrap()
+        } else {
+            return;
+        };
+
+        if self.font_style.nofill && tok.starts_line {
+            //self.add_to_output(LINEBREAK);
+            self.add_linebreak();
+        }
+
+        if tok.class == TroffToken::Macro {
+            self.parse_macro();
+        } else {
+            self.parse_line();
         }
     }
 
@@ -122,6 +132,7 @@ where
             // not like alternating space/textword so much
             // maybe unify both if it comes down to it
             match tok.class {
+                TroffToken::Macro => self.parse_macro(),
                 TroffToken::Backslash => self.parse_backslash(),
                 TroffToken::Space => self.parse_space(),
                 TroffToken::DoubleQuote => self.parse_doublequote(),
@@ -209,8 +220,16 @@ where
             self.font_style.indent
         };
 
+        let temp_indent = self.font_style.indent;
+        self.font_style.indent = 0;
+
+        self.add_linebreak();
+        self.add_linebreak();
+
         // next text line is the tag
         self.parse_line();
+
+        self.font_style.indent = temp_indent;
 
         // now, on the same line, add [space * indent]
         for _ in 0..indent_count {
@@ -464,19 +483,6 @@ where
 
         if let Some(tok) = self.current_token {
             self.add_to_before_output(&Self::format_token(tok));
-        }
-    }
-
-    /// Consume until the current token starts a new line
-    fn consume_line(&mut self) {
-        self.consume();
-
-        while let Some(tok) = self.current_token() {
-            if tok.starts_line {
-                break;
-            }
-
-            self.consume();
         }
     }
 
