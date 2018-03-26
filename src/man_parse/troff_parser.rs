@@ -111,6 +111,7 @@ where
                 ".B" => self.parse_b(),
                 ".I" => self.parse_i(),
                 ".IR" => self.parse_ir(),
+                ".BI" => self.parse_bi(),
                 ".PP" | ".LP" | ".P" => self.parse_p(),
                 _ => {
                     self.add_to_before_output(&format!(
@@ -127,23 +128,35 @@ where
     /// parse all tokens until the end of the line,
     /// so that the resulting current token is the first of the next line.
     fn parse_line(&mut self) {
-        while let Some(tok) = self.current_token() {
+        while self.current_token().is_some() {
             // TODO: performance -- branch prediction might
             // not like alternating space/textword so much
             // maybe unify both if it comes down to it
-            match tok.class {
-                TroffToken::Macro => self.parse_macro(),
-                TroffToken::Backslash => self.parse_backslash(),
-                TroffToken::Space => self.parse_space(),
-                TroffToken::DoubleQuote => self.parse_doublequote(),
-                _ => self.parse_textword(),
-            }
+            self.parse_word();
 
             if let Some(next_tok) = self.current_token() {
                 if next_tok.starts_line {
                     break;
                 }
             }
+        }
+    }
+
+    /// Parse an individual word, which may be a
+    /// simple literal string, or an escaped character or command
+    fn parse_word(&mut self) {
+        let tok = if let Some(tok) = self.current_token() {
+            tok
+        } else {
+            return;
+        };
+
+        match tok.class {
+            TroffToken::Macro => self.parse_macro(),
+            TroffToken::Backslash => self.parse_backslash(),
+            TroffToken::Space => self.parse_space(),
+            TroffToken::DoubleQuote => self.parse_doublequote(),
+            _ => self.parse_textword(),
         }
     }
 
@@ -284,6 +297,43 @@ where
         }
     }
 
+    /// Alternates between bold and italic.
+    /// TODO: create "parse_alternating(a: FontStyle, b: FontStyle)"
+    fn parse_bi(&mut self) {
+        self.consume_it(".BI");
+
+        let mut bold = true;
+        let mut in_quote = false;
+
+        while let Some(tok) = self.current_token() {
+            if tok.starts_line {
+                break;
+            }
+            if tok.class == TroffToken::Space {
+                self.parse_textword();
+                if !in_quote {
+                    bold = !bold;
+                }
+                continue;
+            }
+            if tok.class == TroffToken::Backslash {
+                in_quote = !in_quote;
+            }
+
+            if bold {
+                println!("bold: {:?}", tok);
+                self.font_style.bold = true;
+                self.parse_word();
+                self.font_style.bold = false;
+            } else {
+                println!("underlined: {:?}", tok);
+                self.font_style.underlined = true;
+                self.parse_word();
+                self.font_style.underlined = false;
+            }
+        }
+    }
+
     fn parse_textword(&mut self) {
         let cur_tok = self.current_token().unwrap();
         self.add_to_output(&cur_tok.value);
@@ -311,7 +361,6 @@ where
     /// Adds a linebreak.
     fn parse_br(&mut self) {
         self.consume();
-        //self.add_to_output(LINEBREAK);
         self.add_linebreak();
     }
 
@@ -457,7 +506,7 @@ where
             };
         }
 
-        self.parse_word();
+        self.consume();
     }
 
     fn format_token(token: I::Item) -> String {
@@ -466,11 +515,6 @@ where
         } else {
             format!(" {}", token.value)
         }
-    }
-
-    fn parse_word(&mut self) {
-        assert!(self.current_token().unwrap().class == TroffToken::TextWord);
-        self.consume();
     }
 
     fn parse_doublequote(&mut self) {
