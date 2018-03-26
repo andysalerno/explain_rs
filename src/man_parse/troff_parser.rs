@@ -233,6 +233,8 @@ where
             self.font_style.indent
         };
 
+        self.consume_spaces();
+
         let temp_indent = self.font_style.indent;
         self.font_style.indent = 0;
 
@@ -247,6 +249,16 @@ where
         // now, on the same line, add [space * indent]
         for _ in 0..indent_count {
             self.add_to_output(SPACE);
+        }
+    }
+
+    fn consume_spaces(&mut self) {
+        while let Some(tok) = self.current_token() {
+            if tok.class != TroffToken::Space {
+                break;
+            }
+
+            self.consume();
         }
     }
 
