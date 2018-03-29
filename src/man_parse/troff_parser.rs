@@ -86,7 +86,6 @@ where
         };
 
         if self.font_style.nofill && tok.starts_line {
-            //self.add_to_output(LINEBREAK);
             self.add_linebreak();
         }
 
@@ -129,9 +128,6 @@ where
     /// so that the resulting current token is the first of the next line.
     fn parse_line(&mut self) {
         while self.current_token().is_some() {
-            // TODO: performance -- branch prediction might
-            // not like alternating space/textword so much
-            // maybe unify both if it comes down to it
             self.parse_word();
 
             if let Some(next_tok) = self.current_token() {
@@ -191,7 +187,7 @@ where
     /// If no argument is provided, default to 0.
     /// TODO: I think the implementation is wrong here??
     fn parse_pd(&mut self) {
-        self.consume_it(".PD");
+        self.consume_val(".PD");
 
         let mut indent = 0;
 
@@ -213,7 +209,7 @@ where
     /// larger than the [Indent], the text begins on the next line.
     /// If no [Indent] is provided, use the default or the previous one.
     fn parse_tp(&mut self) {
-        self.consume_it(".TP");
+        self.consume_val(".TP");
 
         let cur_tok = if let Some(tok) = self.current_token() {
             tok
@@ -284,7 +280,7 @@ where
 
     /// Alternates between italic and regular.
     fn parse_ir(&mut self) {
-        self.consume_it(".IR");
+        self.consume_val(".IR");
 
         let mut italic = true;
 
@@ -312,7 +308,7 @@ where
     /// Alternates between bold and italic.
     /// TODO: create "parse_alternating(a: FontStyle, b: FontStyle)"
     fn parse_bi(&mut self) {
-        self.consume_it(".BI");
+        self.consume_val(".BI");
 
         let mut bold = true;
         let mut in_quote = false;
@@ -419,13 +415,13 @@ where
 
     /// \- gives '-'
     fn parse_hyphen(&mut self) {
-        self.consume_it("-");
+        self.consume_val("-");
         self.add_to_output("-");
     }
 
     /// \(cq gives "'"
     fn parse_special_character(&mut self) {
-        self.consume_it("(");
+        self.consume_val("(");
         if let Some(tok) = self.current_token() {
             match tok.value.as_str() {
                 "cq" => self.add_to_output("'"),
@@ -436,7 +432,7 @@ where
     }
 
     fn parse_font_format(&mut self) {
-        self.consume_it("f");
+        self.consume_val("f");
         if let Some(tok) = self.current_token() {
             // next arg must be the formatting choice
             match tok.value.as_str() {
@@ -454,7 +450,7 @@ where
     }
 
     fn parse_color_format(&mut self) {
-        self.consume_it("m");
+        self.consume_val("m");
         if let Some(tok) = self.current_token() {
             // we now have an argument pattern
             // \mc
@@ -471,7 +467,7 @@ where
     /// Adds some amount of spacing lines,
     /// defaulting to two if no arguments
     fn parse_sp(&mut self) {
-        self.consume_it(".sp");
+        self.consume_val(".sp");
 
         let mut linebreaks = 2;
 
@@ -491,7 +487,6 @@ where
         }
 
         for _ in 0..linebreaks {
-            //self.add_to_output(LINEBREAK);
             self.add_linebreak();
         }
     }
@@ -521,6 +516,10 @@ where
         self.consume();
     }
 
+    fn parse_doublequote(&mut self) {
+        self.consume_class(TroffToken::DoubleQuote);
+    }
+
     fn format_token(token: I::Item) -> String {
         if token.starts_line {
             format!("{}{}", LINEBREAK, token.value)
@@ -529,11 +528,15 @@ where
         }
     }
 
-    fn parse_doublequote(&mut self) {
-        assert!(self.current_token().unwrap().class == TroffToken::DoubleQuote);
+    /// Consume the current token, moving to the next,
+    /// and additionally asserting the consumed token has the given class.
+    fn consume_class(&mut self, class: TroffToken) {
+        assert_eq!(self.current_token().unwrap().class, class);
         self.consume();
     }
 
+    /// Consume the current token, pushing forward the iterator
+    /// to the next token.
     fn consume(&mut self) {
         self.current_token = self.tokens.as_mut().unwrap().next();
 
@@ -542,7 +545,7 @@ where
         }
     }
 
-    fn consume_it(&mut self, it: &str) {
+    fn consume_val(&mut self, it: &str) {
         assert!(it == self.current_token.unwrap().value);
         self.consume();
     }
