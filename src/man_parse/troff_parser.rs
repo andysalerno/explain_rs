@@ -171,17 +171,6 @@ where
         self.add_linebreak();
     }
 
-    /// Add a linebreak to the output,
-    /// and also indent from the left based on the current style.
-    fn add_linebreak(&mut self) {
-        self.add_to_output(LINEBREAK);
-
-        // newlines must receive the current left-margin indent
-        for _ in 0..self.font_style.indent {
-            self.add_to_output(SPACE);
-        }
-    }
-
     /// .PD [Distance]
     /// Sets paragraph distance.
     /// If no argument is provided, default to 0.
@@ -245,16 +234,6 @@ where
         // now, on the same line, add [space * indent]
         for _ in 0..indent_count {
             self.add_to_output(SPACE);
-        }
-    }
-
-    fn consume_spaces(&mut self) {
-        while let Some(tok) = self.current_token() {
-            if tok.class != TroffToken::Space {
-                break;
-            }
-
-            self.consume();
         }
     }
 
@@ -370,29 +349,6 @@ where
     fn parse_br(&mut self) {
         self.consume();
         self.add_linebreak();
-    }
-
-    fn add_to_output(&mut self, s: &str) {
-        if self.parse_section.is_some() && self.parse_section == self.current_section {
-            if self.font_style.bold {
-                let bold = s.bold();
-                self.section_text.push_str(&bold);
-            } else if self.font_style.italic {
-                let italic = s.underlined();
-                self.section_text.push_str(&italic);
-            } else if self.font_style.underlined {
-                let underlined = s.underlined();
-                self.section_text.push_str(&underlined);
-            } else {
-                self.section_text.push_str(s);
-            }
-        }
-    }
-
-    fn add_to_before_output(&mut self, s: &str) {
-        if self.parse_section.is_some() && self.parse_section == self.current_section {
-            self.before_section_text.push_str(s);
-        }
     }
 
     /// Parses a backslash, which escapes some value.
@@ -550,6 +506,16 @@ where
         self.consume();
     }
 
+    fn consume_spaces(&mut self) {
+        while let Some(tok) = self.current_token() {
+            if tok.class != TroffToken::Space {
+                break;
+            }
+
+            self.consume();
+        }
+    }
+
     fn current_token(&self) -> Option<I::Item> {
         self.current_token
     }
@@ -560,5 +526,39 @@ where
 
     pub fn section_text(&self) -> &str {
         &self.section_text
+    }
+
+    /// Add a linebreak to the output,
+    /// and also indent from the left based on the current style.
+    fn add_linebreak(&mut self) {
+        self.add_to_output(LINEBREAK);
+
+        // newlines must receive the current left-margin indent
+        for _ in 0..self.font_style.indent {
+            self.add_to_output(SPACE);
+        }
+    }
+
+    fn add_to_output(&mut self, s: &str) {
+        if self.parse_section.is_some() && self.parse_section == self.current_section {
+            if self.font_style.bold {
+                let bold = s.bold();
+                self.section_text.push_str(&bold);
+            } else if self.font_style.italic {
+                let italic = s.underlined();
+                self.section_text.push_str(&italic);
+            } else if self.font_style.underlined {
+                let underlined = s.underlined();
+                self.section_text.push_str(&underlined);
+            } else {
+                self.section_text.push_str(s);
+            }
+        }
+    }
+
+    fn add_to_before_output(&mut self, s: &str) {
+        if self.parse_section.is_some() && self.parse_section == self.current_section {
+            self.before_section_text.push_str(s);
+        }
     }
 }
