@@ -4,6 +4,13 @@ pub fn tokenize<C: TokenClass>(input: &str, classifier: &TokenGenerator<C>) -> V
     let mut result = Vec::new();
 
     for line in input.lines() {
+        // special case where the line is a totally blank line
+        if line.len() == 0 {
+            let mut tokens = classifier.generate("", true);
+            result.append(&mut tokens);
+            continue;
+        }
+
         for (i, word) in line.split_whitespace().enumerate() {
             let starts_line = i == 0;
 

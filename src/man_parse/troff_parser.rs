@@ -20,6 +20,8 @@ struct FontStyle {
 
 const LINEBREAK: &str = "\n";
 const SPACE: &str = " ";
+const DEFAULT_PAR_INDENT: usize = 10;
+const DEFAULT_TAG_INDENT: usize = 5;
 
 pub struct TroffParser<'a, I>
 where
@@ -149,11 +151,19 @@ where
 
         match tok.class {
             TroffToken::Macro => self.parse_macro(),
+            TroffToken::EmptyLine => self.parse_empty_line(),
             TroffToken::Backslash => self.parse_backslash(),
             TroffToken::Space => self.parse_space(),
             TroffToken::DoubleQuote => self.parse_doublequote(),
             _ => self.parse_textword(),
         }
+    }
+
+    /// an empty line in troff generates an empty output line
+    fn parse_empty_line(&mut self) {
+        self.consume_class(TroffToken::EmptyLine);
+        self.add_linebreak();
+        self.add_linebreak();
     }
 
     /// .P, .PP, or .LP (all mutual aliases)
@@ -167,7 +177,6 @@ where
         self.font_style.italic = false;
         self.font_style.underlined = false;
 
-        self.add_to_output("[.PP]");
         self.add_linebreak();
         self.add_linebreak();
     }
@@ -206,22 +215,26 @@ where
         };
 
         // optional argument specifies indentation of paragraph text
-        let indent_count = if !cur_tok.starts_line {
+        let para_indent = if !cur_tok.starts_line {
             let parsed_indent = cur_tok.value.parse::<usize>().unwrap();
             self.consume();
 
             parsed_indent
         } else {
-            self.font_style.indent
+            DEFAULT_PAR_INDENT
         };
 
-        self.font_style.indent = 5;
+        // there are two indent levels to keep track of
+        // the "flush-left" indent level, where the tag starts
+        // and the paragraph indent level, where the paragraph starts.
+
+        // output the tag on a new line
+        self.font_style.indent = DEFAULT_TAG_INDENT;
         self.add_linebreak();
         self.consume_spaces();
-
         self.parse_line();
 
-        self.font_style.indent = indent_count;
+        self.font_style.indent = para_indent;
         // now parse the paragraph line
         self.add_linebreak();
 
@@ -469,10 +482,16 @@ where
     }
 
     fn format_token(token: I::Item) -> String {
+        let val = match token.class {
+            TroffToken::Space => "[ ]",
+            TroffToken::EmptyLine => "[el]",
+            _ => &token.value,
+        };
+
         if token.starts_line {
-            format!("{}{}", LINEBREAK, token.value)
+            format!("{}{}", LINEBREAK, val)
         } else {
-            format!(" {}", token.value)
+            format!("{}", val)
         }
     }
 

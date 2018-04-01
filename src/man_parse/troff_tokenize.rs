@@ -18,6 +18,8 @@ pub enum TroffToken {
     // i.e., the 'B' in '\fB',
     // or the 'I' in '.ft I'
     CommandArg,
+
+    EmptyLine,
 }
 
 /// Used when parsing macro arguments --
@@ -38,6 +40,13 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
         if starts_line && word.starts_with('.') {
             let tok = Token::new(TroffToken::Macro, word.to_owned(), true);
             tokens.push(tok);
+            return tokens;
+        }
+
+        if starts_line && word.len() == 0 {
+            println!("found blank line!");
+            let empty_line = Token::new(TroffToken::EmptyLine, "".into(), true);
+            tokens.push(empty_line);
             return tokens;
         }
 
