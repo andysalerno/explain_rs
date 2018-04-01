@@ -167,6 +167,7 @@ where
         self.font_style.italic = false;
         self.font_style.underlined = false;
 
+        self.add_to_output("[.PP]");
         self.add_linebreak();
         self.add_linebreak();
     }
@@ -183,20 +184,18 @@ where
         if let Some(tok) = self.current_token() {
             if !tok.starts_line {
                 indent = tok.value.parse::<usize>().unwrap();
+                self.consume();
             }
-
-            self.consume();
         }
 
         self.font_style.indent = indent;
     }
 
-    /// .TP [Indent]
-    /// The next input line that contains text is the "tag".
-    /// The tag is printed at the normal indent, and then on the same line
-    /// the remaining text is given at the [Index] distance.  If the tag is
-    /// larger than the [Indent], the text begins on the next line.
-    /// If no [Indent] is provided, use the default or the previous one.
+    /// .TP [Indent]\n[Label]\n[Paragraph]
+    /// Creates a paragraph tagged with a label.
+    /// The next input line that contains text is the "label", printed flush-left.
+    /// The line after that is the paragraph text, with "indent" indentation.
+    /// If the label is smaller than the indent, the paragraph begins on the same line (not implemented).
     fn parse_tp(&mut self) {
         self.consume_val(".TP");
 
@@ -206,11 +205,9 @@ where
             return;
         };
 
+        // optional argument specifies indentation of paragraph text
         let indent_count = if !cur_tok.starts_line {
             let parsed_indent = cur_tok.value.parse::<usize>().unwrap();
-            self.font_style.indent = parsed_indent;
-
-            // consume the optional TP indent argument
             self.consume();
 
             parsed_indent
@@ -218,29 +215,24 @@ where
             self.font_style.indent
         };
 
+        self.font_style.indent = 5;
+        self.add_linebreak();
         self.consume_spaces();
 
-        let temp_indent = self.font_style.indent;
-        self.font_style.indent = 0;
-
-        self.add_linebreak();
-        self.add_linebreak();
-
-        // next text line is the tag
         self.parse_line();
 
-        self.font_style.indent = temp_indent;
+        self.font_style.indent = indent_count;
+        // now parse the paragraph line
+        self.add_linebreak();
 
-        // now, on the same line, add [space * indent]
-        for _ in 0..indent_count {
-            self.add_to_output(SPACE);
-        }
+        // really we want to parse until a newline, instead of a newline token
+        //self.parse_line();
     }
 
     /// Sets the rest of the line to bold,
     /// or the very next line if there are no same-line values.
     fn parse_b(&mut self) {
-        self.consume();
+        self.consume_class(TroffToken::Macro);
         self.font_style.bold = true;
 
         self.parse_line();
@@ -251,7 +243,7 @@ where
     /// Sets the rest of the line to bold,
     /// or the very next line if there are no same-line values.
     fn parse_i(&mut self) {
-        self.consume();
+        self.consume_class(TroffToken::Macro);
         self.font_style.italic = true;
         self.parse_line();
         self.font_style.italic = false;
