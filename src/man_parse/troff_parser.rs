@@ -230,6 +230,7 @@ where
         // and the paragraph indent level, where the paragraph starts.
 
         // output the tag on a new line
+        let prev_indent = self.font_style.indent;
         self.font_style.indent = DEFAULT_TAG_INDENT;
         self.add_linebreak();
         self.consume_spaces();
@@ -238,6 +239,8 @@ where
         self.font_style.indent = para_indent;
         // now parse the paragraph line
         self.add_linebreak();
+
+        self.font_style.indent = prev_indent;
 
         // really we want to parse until a newline, instead of a newline token
         //self.parse_line();
@@ -256,12 +259,21 @@ where
         let marker_arg = self.parse_macro_arg();
         for tok in marker_arg {
             self.add_to_output(&tok.value);
+            self.add_to_output(SPACE);
         }
+
+        let width_arg = self.parse_macro_arg();
+        let indent_count = if !width_arg.is_empty() {
+            width_arg.get(0).unwrap().value.parse::<i32>().unwrap()
+        } else {
+            5
+        };
 
         self.add_linebreak();
 
-        // TODO: do something with width_arg
-        let width_arg = self.parse_macro_arg();
+        for _ in 0..indent_count {
+            self.add_to_output(SPACE);
+        }
         //for tok in width_arg {}
 
         // next line is the body
@@ -308,10 +320,11 @@ where
             if tok.class == TroffToken::DoubleQuote {
                 self.consume_class(TroffToken::DoubleQuote);
                 return result;
+            } else if tok.class != TroffToken::Space {
+                result.push(tok);
             }
 
             self.consume();
-            result.push(tok);
         }
 
         result
