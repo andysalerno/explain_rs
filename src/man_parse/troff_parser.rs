@@ -113,6 +113,7 @@ where
                 ".I" => self.parse_i(),
                 ".IR" => self.parse_ir(),
                 ".BI" => self.parse_bi(),
+                ".IP" => self.parse_ip(),
                 ".PP" | ".LP" | ".P" => self.parse_p(),
                 _ => {
                     self.add_to_before_output(&format!(
@@ -240,6 +241,80 @@ where
 
         // really we want to parse until a newline, instead of a newline token
         //self.parse_line();
+    }
+
+    /// .IP [marker [width]]\n[body]
+    /// prints list-style paragraphs.
+    /// 'marker' is the tag, like a bullet point \[bu]
+    /// 'width' is the indentation of the body from (including) the marker.
+    fn parse_ip(&mut self) {
+        self.consume_val(".IP");
+
+        self.add_linebreak();
+        self.add_linebreak();
+
+        let marker_arg = self.parse_macro_arg();
+        for tok in marker_arg {
+            self.add_to_output(&tok.value);
+        }
+
+        self.add_linebreak();
+
+        // TODO: do something with width_arg
+        let width_arg = self.parse_macro_arg();
+        //for tok in width_arg {}
+
+        // next line is the body
+        self.parse_line();
+    }
+
+    /// Parse the next arg for a macro.
+    /// Not used everywhere, but ultimate goal
+    /// is to unify arguments under this
+    /// since args may be contained in quotes
+    fn parse_macro_arg(&mut self) -> Vec<I::Item> {
+        self.consume_spaces();
+
+        let mut result = Vec::new();
+
+        if let Some(tok) = self.current_token() {
+            // args are always on the same line
+            if tok.starts_line {
+                return result;
+            }
+
+            if tok.class == TroffToken::DoubleQuote {
+                return self.parse_within_quotes();
+            } else {
+                result.push(tok);
+                self.consume();
+                return result;
+            }
+        }
+
+        return result;
+    }
+
+    fn parse_within_quotes(&mut self) -> Vec<I::Item> {
+        self.consume_class(TroffToken::DoubleQuote);
+
+        let mut result = Vec::new();
+
+        while let Some(tok) = self.current_token() {
+            if tok.starts_line {
+                return result;
+            }
+
+            if tok.class == TroffToken::DoubleQuote {
+                self.consume_class(TroffToken::DoubleQuote);
+                return result;
+            }
+
+            self.consume();
+            result.push(tok);
+        }
+
+        result
     }
 
     /// Sets the rest of the line to bold,
