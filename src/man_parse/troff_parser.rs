@@ -1,22 +1,8 @@
+use man_parse::font_style::FontStyle;
+use man_parse::man_section::ManSection;
 use man_parse::troff_tokenize::TroffToken;
 use simple_parser::token::Token;
 use text_format::text_format::TextFormat;
-use man_parse::man_section::ManSection;
-
-#[derive(Default)]
-struct FontStyle {
-    bold: bool,
-    italic: bool,
-    underlined: bool,
-
-    /// is no-fill mode active?
-    /// prints lines "as-is", including whitespace.
-    /// enabled with macro ".nf", disabled with ".fi"
-    nofill: bool,
-
-    /// The current text indent
-    indent: usize,
-}
 
 const LINEBREAK: &str = "\n";
 const SPACE: &str = " ";
@@ -114,6 +100,8 @@ where
                 ".IR" => self.parse_ir(),
                 ".BI" => self.parse_bi(),
                 ".IP" => self.parse_ip(),
+                ".RS" => self.parse_rs(),
+                ".RE" => self.parse_re(),
                 ".PP" | ".LP" | ".P" => self.parse_p(),
                 _ => {
                     self.add_to_before_output(&format!(
@@ -173,7 +161,7 @@ where
         self.consume();
 
         // TODO: just recreate the default FontStyle
-        self.font_style.indent = 0;
+        self.font_style.set_indent(0);
         self.font_style.bold = false;
         self.font_style.italic = false;
         self.font_style.underlined = false;
@@ -198,7 +186,7 @@ where
             }
         }
 
-        self.font_style.indent = indent;
+        self.font_style.set_indent(indent);
     }
 
     /// .TP [Indent]\n[Label]\n[Paragraph]
@@ -230,17 +218,17 @@ where
         // and the paragraph indent level, where the paragraph starts.
 
         // output the tag on a new line
-        let prev_indent = self.font_style.indent;
-        self.font_style.indent = DEFAULT_TAG_INDENT;
+        let prev_indent = self.font_style.indent();
+        self.font_style.set_indent(DEFAULT_TAG_INDENT);
         self.add_linebreak();
         self.consume_spaces();
         self.parse_line();
 
-        self.font_style.indent = para_indent;
+        self.font_style.set_indent(para_indent);
         // now parse the paragraph line
         self.add_linebreak();
 
-        self.font_style.indent = prev_indent;
+        self.font_style.set_indent(prev_indent);
 
         // really we want to parse until a newline, instead of a newline token
         //self.parse_line();
@@ -253,37 +241,83 @@ where
     fn parse_ip(&mut self) {
         self.consume_val(".IP");
 
+        // zero indent so tag starts at margin
+        self.font_style.zero_indent();
+
+        // create a blank line before writing the tag
         self.add_linebreak();
         self.add_linebreak();
 
+        // add the marker (aka tag) flush with the margin
         let marker_arg = self.parse_macro_arg();
         for tok in marker_arg {
             self.add_to_output(&tok.value);
             self.add_to_output(SPACE);
         }
 
+        // parse the optional indent argument
+        // or use the previous indent if no arg provided
         let width_arg = self.parse_macro_arg();
         let indent_count = if !width_arg.is_empty() {
-            width_arg.get(0).unwrap().value.parse::<i32>().unwrap()
+            let count = width_arg.get(0).unwrap().value.parse::<usize>().unwrap();
+            count
         } else {
-            5
+            self.font_style.prev_indent()
         };
 
+        // set indent before printing paragraph
+        self.font_style.set_indent(indent_count);
+
+        // start paragraph on newline
         self.add_linebreak();
 
-        for _ in 0..indent_count {
-            self.add_to_output(SPACE);
-        }
-        //for tok in width_arg {}
-
-        // next line is the body
+        // parse the paragraph
         self.parse_line();
+    }
+
+    /// increases the margin by a certain depth
+    fn parse_rs(&mut self) {
+        self.consume_val(".RS");
+
+        let mut arg = self.parse_macro_arg();
+
+        // an arg can specify how much to increase
+        let increase = if !arg.is_empty() {
+            arg.pop().unwrap().value.parse::<usize>().unwrap()
+        } else {
+            // else we get it from the last TP, IP, HP, or default
+            self.font_style.prev_indent()
+        };
+
+        self.font_style.increase_margin(increase);
+
+        // indent value is then reset to default
+        self.font_style.zero_indent();
+    }
+
+    /// decreases the margin by a certain depth
+    fn parse_re(&mut self) {
+        self.consume_val(".RE");
+
+        let mut arg = self.parse_macro_arg();
+
+        let pops = if !arg.is_empty() {
+            arg.pop().unwrap().value.parse::<usize>().unwrap()
+        } else {
+            // if no arg provided, just pop once
+            1
+        };
+
+        for _ in 0..pops {
+            self.font_style.pop_margin();
+        }
     }
 
     /// Parse the next arg for a macro.
     /// Not used everywhere, but ultimate goal
     /// is to unify arguments under this
     /// since args may be contained in quotes
+    /// TODO: can I return a single String, instead of a Vec?
     fn parse_macro_arg(&mut self) -> Vec<I::Item> {
         self.consume_spaces();
 
@@ -633,7 +667,7 @@ where
         self.add_to_output(LINEBREAK);
 
         // newlines must receive the current left-margin indent
-        for _ in 0..self.font_style.indent {
+        for _ in 0..self.font_style.text_start_pos() {
             self.add_to_output(SPACE);
         }
     }

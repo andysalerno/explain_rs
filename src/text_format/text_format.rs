@@ -13,10 +13,12 @@ impl<'a> TextFormat for &'a str {
     }
 
     fn italic(self) -> String {
-        const italic_tag: &str = "\x1b[3m";
-        const italic_tag_close: &str = "\x1b[0m";
+        // const italic_tag: &str = "\x1b[3m";
+        // const italic_tag_close: &str = "\x1b[0m";
 
-        format!("{}{}{}", italic_tag, self, italic_tag_close)
+        // format!("{}{}{}", italic_tag, self, italic_tag_close)
+
+        self.underlined()
     }
 
     fn underlined(self) -> String {
