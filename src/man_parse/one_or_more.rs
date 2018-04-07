@@ -4,14 +4,6 @@ pub enum OneOrMany<T> {
     Many(Vec<T>),
 }
 
-pub struct Iter<T> {
-    index: usize,
-}
-
-impl<T> Iterator for Iter<T> {
-    type Item = T;
-}
-
 impl<T> OneOrMany<T> {
     pub fn is_one(&self) -> bool {
         match *self {
@@ -22,13 +14,6 @@ impl<T> OneOrMany<T> {
 
     pub fn is_many(&self) -> bool {
         !self.is_one()
-    }
-
-    pub fn iter(&self) -> Iter<T> {
-        match *self {
-            OneOrMany::One(_) => panic!("attempted to get iter for One"),
-            OneOrMany::Many(v) => v.iter(),
-        }
     }
 }
 

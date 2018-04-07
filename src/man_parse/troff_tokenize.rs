@@ -49,14 +49,10 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
             return tokens;
         }
 
-        // we're going to redefine this
-        // so we can say starts_line is false
-        // after we do a split
         let mut starts_line = starts_line;
-
         let mut peek_iter = word.chars().enumerate();
-
         let mut base_index: usize = 0;
+
         while let Some((walker, c)) = peek_iter.next() {
             if let Some(special_class) = try_match_special(&c) {
                 // found a special char in the middle of the word
@@ -116,6 +112,8 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
             tokens.push(word_tok);
         }
 
+        // this exists because we must differentiate between
+        // the tokens resulting from '\fBHello' and '\ f B Hello'
         tokens.push(Token::new(TroffToken::Space, " ".to_string(), false));
 
         tokens

@@ -3,6 +3,7 @@ use man_parse::man_section::ManSection;
 use man_parse::troff_tokenize::TroffToken;
 use simple_parser::token::Token;
 use text_format::text_format::TextFormat;
+use std;
 
 const LINEBREAK: &str = "\n";
 const SPACE: &str = " ";
@@ -245,33 +246,31 @@ where
         self.font_style.zero_indent();
 
         // create a blank line before writing the tag
-        self.add_linebreak();
-        self.add_linebreak();
+        self.add_blank_line();
 
         self.consume_spaces();
 
-        // add the marker (aka tag) flush with the margin
+        // first optional arg is the marker (aka tag), it is printed flush with the margin
         let marker_arg = self.parse_macro_arg();
         for tok in marker_arg {
             self.add_to_output(&tok.value);
             self.add_to_output(SPACE);
         }
 
-        // parse the optional indent argument
-        // or use the previous indent if no arg provided
-        let mut width_arg = self.parse_macro_arg();
-        let indent_count = if !width_arg.is_empty() {
-            let argval = width_arg.pop().unwrap();
-            println!("found argval: {}", &argval.value);
-            let count = argval.value.parse::<i32>().unwrap();
-            if count < 0 {
-                println!("warning, found count ip < 0, of {}", count);
-                0
-            } else {
-                count as usize
-            }
+        self.consume_spaces();
+
+        // next optional arg is the width to indent for the paragraph
+        let indent_tok = self.parse_macro_arg().next();
+        let default = self.font_style.prev_indent();
+        let indent_count = if indent_tok.is_some() {
+            let f_val = indent_tok
+                .unwrap()
+                .value
+                .parse::<f32>()
+                .unwrap_or(default as f32);
+            f_val as usize
         } else {
-            self.font_style.prev_indent()
+            default
         };
 
         // set indent before printing paragraph
@@ -288,11 +287,11 @@ where
     fn parse_rs(&mut self) {
         self.consume_val(".RS");
 
-        let mut arg = self.parse_macro_arg();
+        let indent_arg = self.parse_macro_arg().next();
 
-        // an arg can specify how much to increase
-        let increase = if !arg.is_empty() {
-            arg.pop().unwrap().value.parse::<usize>().unwrap()
+        // first optional arg indicates how much to increase margin
+        let increase = if indent_arg.is_some() {
+            indent_arg.unwrap().value.parse::<usize>().unwrap()
         } else {
             // else we get it from the last TP, IP, HP, or default
             self.font_style.prev_indent()
@@ -300,18 +299,21 @@ where
 
         self.font_style.increase_margin(increase);
 
+        println!("did rs with increase: {}", increase);
+
         // indent value is then reset to default
         self.font_style.zero_indent();
+        self.add_linebreak();
     }
 
     /// decreases the margin by a certain depth
     fn parse_re(&mut self) {
         self.consume_val(".RE");
 
-        let mut arg = self.parse_macro_arg();
+        let decrease_arg = self.parse_macro_arg().next();
 
-        let pops = if !arg.is_empty() {
-            arg.pop().unwrap().value.parse::<usize>().unwrap()
+        let pops = if decrease_arg.is_some() {
+            decrease_arg.unwrap().value.parse::<usize>().unwrap()
         } else {
             // if no arg provided, just pop once
             1
@@ -327,7 +329,7 @@ where
     /// is to unify arguments under this
     /// since args may be contained in quotes
     /// TODO: can I return a single String, instead of a Vec?
-    fn parse_macro_arg(&mut self) -> Vec<I::Item> {
+    fn parse_macro_arg(&mut self) -> std::vec::IntoIter<I::Item> {
         self.consume_spaces();
 
         let mut result = Vec::new();
@@ -335,19 +337,19 @@ where
         if let Some(tok) = self.current_token() {
             // args are always on the same line
             if tok.starts_line {
-                return result;
+                return result.into_iter();
             }
 
             if tok.class == TroffToken::DoubleQuote {
-                return self.parse_within_quotes();
+                return self.parse_within_quotes().into_iter();
             } else {
                 result.push(tok);
                 self.consume();
-                return result;
+                return result.into_iter();
             }
         }
 
-        return result;
+        return result.into_iter();
     }
 
     fn parse_within_quotes(&mut self) -> Vec<I::Item> {
@@ -678,6 +680,12 @@ where
         // newlines must receive the current left-margin indent
         for _ in 0..self.font_style.text_start_pos() {
             self.add_to_output(SPACE);
+        }
+    }
+
+    fn add_blank_line(&mut self) {
+        for _ in 0..2 {
+            self.add_linebreak();
         }
     }
 
