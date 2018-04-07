@@ -248,6 +248,8 @@ where
         self.add_linebreak();
         self.add_linebreak();
 
+        self.consume_spaces();
+
         // add the marker (aka tag) flush with the margin
         let marker_arg = self.parse_macro_arg();
         for tok in marker_arg {
@@ -257,10 +259,17 @@ where
 
         // parse the optional indent argument
         // or use the previous indent if no arg provided
-        let width_arg = self.parse_macro_arg();
+        let mut width_arg = self.parse_macro_arg();
         let indent_count = if !width_arg.is_empty() {
-            let count = width_arg.get(0).unwrap().value.parse::<usize>().unwrap();
-            count
+            let argval = width_arg.pop().unwrap();
+            println!("found argval: {}", &argval.value);
+            let count = argval.value.parse::<i32>().unwrap();
+            if count < 0 {
+                println!("warning, found count ip < 0, of {}", count);
+                0
+            } else {
+                count as usize
+            }
         } else {
             self.font_style.prev_indent()
         };
