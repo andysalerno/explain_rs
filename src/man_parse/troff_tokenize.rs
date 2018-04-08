@@ -18,6 +18,9 @@ pub enum TroffToken {
     // i.e., the 'B' in '\fB',
     // or the 'I' in '.ft I'
     CommandArg,
+    ArgOpenBracket,
+    ArgCloseBracket,
+    ArgOpenParen,
 
     EmptyLine,
 }
@@ -27,6 +30,8 @@ pub enum TroffToken {
 /// the usize is the full size of the args
 /// section
 struct MacroArgs<'a>(&'a str, usize);
+
+struct MacroArgs_<'a>(Vec<&'a str>);
 
 // TODO: implement #[derive(TokenClass)] macro...
 impl TokenClass for TroffToken {}
@@ -55,15 +60,16 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
 
         while let Some((walker, c)) = peek_iter.next() {
             if let Some(special_class) = try_match_special(&c) {
-                // found a special char in the middle of the word
-                // so split here
+                // found a special token, so we must split here
                 if walker > base_index {
+                    // everything before us is a token on is own
                     let prev_word = word[base_index..walker].to_owned();
                     let prev_tok = Token::new(TroffToken::TextWord, prev_word, starts_line);
                     tokens.push(prev_tok);
                     starts_line = false;
                 }
 
+                // after the split, we have the special token itself
                 let special_tok = Token::new(special_class, c.to_string(), starts_line);
 
                 tokens.push(special_tok);
@@ -72,33 +78,36 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
 
                 // after a '\' is always an escaped character
                 if special_class == TroffToken::Backslash {
-                    if let Some(next) = peek_iter.next() {
-                        let next_index = next.0;
-                        let command_char = next.1;
-
-                        let escaped =
-                            Token::new(TroffToken::EscapeCommand, command_char.to_string(), false);
-
-                        tokens.push(escaped);
-                        base_index = next_index + 1;
-
-                        // after the escaped token, we might now have arguments
-                        // i.e., '\fB' takes arg 'B'
-                        let args = get_escaped_args(command_char, &word[next_index + 1..]);
-
-                        if args.1 > 0 {
-                            let args_tok =
-                                Token::new(TroffToken::CommandArg, args.0.to_string(), false);
-
-                            tokens.push(args_tok);
-
-                            for _ in 0..args.1 {
-                                peek_iter.next();
-                            }
-
-                            base_index += args.1;
+                    let next = {
+                        if let Some(n) = peek_iter.next() {
+                            n
+                        } else {
+                            continue;
                         }
+                    };
+
+                    let (next_index, command_char) = next;
+
+                    let escaped =
+                        Token::new(TroffToken::EscapeCommand, command_char.to_string(), false);
+
+                    tokens.push(escaped);
+                    base_index = next_index + 1;
+
+                    // after the escaped token, we might now have an argument
+                    // i.e., '\fB' takes arg 'B'
+                    let mut advance_count = 0;
+                    let args = get_escaped_args_(&word[next_index + 1..]);
+
+                    for arg in args {
+                        advance_count += arg.value.len();
+                        tokens.push(arg);
                     }
+
+                    for _ in 0..advance_count {
+                        peek_iter.next();
+                    }
+                    base_index += advance_count;
                 }
             }
         }
@@ -125,6 +134,45 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
     }
 }
 
+fn get_escaped_args_(word: &str) -> Vec<Token<TroffToken>> {
+    let mut v = Vec::new();
+
+    // accepted arg patterns are like:
+    // \mc
+    // \m(co
+    // \m[color]
+    match word.chars().nth(0) {
+        Some('(') => {
+            let open_tok = Token::new(TroffToken::ArgOpenParen, "(".to_owned(), false);
+            v.push(open_tok);
+
+            let arg = &word[1..3];
+            let arg_tok = Token::new(TroffToken::CommandArg, arg.to_owned(), false);
+            v.push(arg_tok);
+        }
+        Some('[') => {
+            let open_tok = Token::new(TroffToken::ArgOpenBracket, "[".to_owned(), false);
+            v.push(open_tok);
+
+            let close_index = word.find(']').unwrap();
+            let arg = &word[1..close_index];
+            let arg_tok = Token::new(TroffToken::CommandArg, arg.to_owned(), false);
+            v.push(arg_tok);
+
+            let close_tok = Token::new(TroffToken::ArgCloseBracket, "]".to_owned(), false);
+            v.push(close_tok);
+        }
+        Some(_) => {
+            let arg = &word[0..1];
+            let arg_tok = Token::new(TroffToken::CommandArg, arg.to_owned(), false);
+            v.push(arg_tok);
+        }
+        None => {}
+    };
+
+    v
+}
+
 /// Some escape commands can have args,
 /// like '\fB' where the escape command is 'f'
 /// and the arg is 'B'.
@@ -135,10 +183,10 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
 /// return which subset of the slice is made up of args (empty slice if none).
 ///
 /// i.e., given command 'f' and word 'BHello',
-/// the result should be '[B]'.
+/// the result should be 'vec[B]'.
 fn get_escaped_args(command_char: char, potential_args: &str) -> MacroArgs {
     match command_char {
-        'f' => get_command_args(&potential_args),
+        'f' | 'm' => get_command_args(&potential_args),
         '(' => MacroArgs(&potential_args[0..2], 2),
 
         // these commands take no args, so always empty slice

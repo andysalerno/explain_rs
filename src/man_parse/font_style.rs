@@ -30,7 +30,11 @@ const DEFAULT_INDENT: usize = 5;
 const DEFAULT_MARGIN_INCREASE: usize = 5;
 
 impl FontStyle {
-    pub fn reset_font_properties(&mut self) {}
+    pub fn reset_font_properties(&mut self) {
+        self.bold = false;
+        self.italic = false;
+        self.underlined = false;
+    }
 
     pub fn set_indent(&mut self, indent: usize) {
         //self.prev_indent = Some(self.indent);
@@ -54,7 +58,7 @@ impl FontStyle {
     //     // Should it be a stack of value history?
     // }
 
-    /// Reset the indentation to 0.
+    /// Sets the indentation to 0.
     pub fn zero_indent(&mut self) {
         self.indent = 0;
     }

@@ -103,6 +103,7 @@ where
                 ".IP" => self.parse_ip(),
                 ".RS" => self.parse_rs(),
                 ".RE" => self.parse_re(),
+                ".if" => self.parse_if(),
                 ".PP" | ".LP" | ".P" => self.parse_p(),
                 _ => {
                     self.add_to_before_output(&format!(
@@ -494,7 +495,7 @@ where
     /// A more complicated example is '\fBHello', which
     /// prints 'Hello' in bold.
     fn parse_backslash(&mut self) {
-        self.consume();
+        self.consume_val("\\");
 
         if let Some(tok) = self.current_token() {
             match tok.value.as_str() {
@@ -522,6 +523,8 @@ where
                 // also lq, rq, oq apparently, TODO
                 _ => {}
             }
+
+            self.consume();
         }
     }
 
@@ -530,16 +533,13 @@ where
         if let Some(tok) = self.current_token() {
             // next arg must be the formatting choice
             match tok.value.as_str() {
-                "B" => {
-                    self.font_style.bold = true;
-                    self.consume();
-                }
-                "R" | "P" => {
-                    self.font_style.bold = false;
-                    self.consume();
-                }
-                _ => self.consume(),
+                "B" => self.font_style.bold = true,
+                "I" => self.font_style.italic = true,
+                "R" | "P" => self.font_style.reset_font_properties(),
+                _ => {}
             }
+
+            self.consume();
         }
     }
 
@@ -551,7 +551,25 @@ where
             // \m(co
             // \m[color]
             match tok.value.as_str() {
-                "[" => {}
+                "[" => {
+                    // consume the '['
+                    self.consume_val("[");
+
+                    if let Some(inner_tok) = self.current_token() {
+                        if inner_tok.value == "]" {
+                            // next token can either close with no arg
+                            self.consume_val("]");
+                        } else {
+                            // or else it is the arg and then closes
+                            self.consume();
+                            self.consume_val("]");
+                        }
+                    }
+                }
+                "(" => {
+                    self.consume_val("(");
+                    self.consume();
+                }
                 _ => self.consume(),
             }
         }
@@ -610,21 +628,39 @@ where
         self.consume();
     }
 
+    /// we aren't smart enough to evaluate expressions
+    /// so "if" will simply always be ignored
+    fn parse_if(&mut self) {
+        self.consume_val(".if");
+        self.consume_line();
+    }
+
+    /// consume until the beginning of the next line
+    fn consume_line(&mut self) {
+        while let Some(tok) = self.current_token() {
+            if tok.starts_line {
+                return;
+            }
+
+            self.consume();
+        }
+    }
+
     fn parse_doublequote(&mut self) {
         self.consume_class(TroffToken::DoubleQuote);
     }
 
     fn format_token(token: I::Item) -> String {
         let val = match token.class {
-            TroffToken::Space => "[ ]",
+            TroffToken::Space => " ",
             TroffToken::EmptyLine => "[el]",
             _ => &token.value,
         };
 
         if token.starts_line {
-            format!("{}{}", LINEBREAK, val)
+            format!("{}{} ", LINEBREAK, val)
         } else {
-            format!("{}", val)
+            format!("{} ", val)
         }
     }
 
