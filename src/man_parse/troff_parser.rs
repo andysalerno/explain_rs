@@ -1,8 +1,7 @@
 extern crate term_size;
 
 use man_parse::man_section::ManSection;
-use man_parse::troff_term_writer::FontStyle;
-use man_parse::troff_term_writer::TroffTermWriter;
+use man_parse::troff_term_writer::{FontStyle, TermWriter, TroffTermWriter};
 use man_parse::troff_tokenize::TroffToken;
 use simple_parser::token::Token;
 use std;

@@ -1,16 +1,16 @@
 const DEFAULT_INDENT: usize = 5;
 const DEFAULT_MARGIN_INCREASE: usize = 5;
 
-trait TermWriter {
+pub trait TermWriter {
     /// Add a single line of text, inserting linebreaks if it exceeds the limit
-    fn add_single_line(line: &str);
+    fn add_line_tobuf(&mut self, line: &str);
 
     /// Set the indent to be used when adding lines
     /// (line breaks will also respect the indent)
-    fn set_indent(count: usize);
+    fn set_indent(&mut self, count: usize);
 
     /// Write the buffer out to stdout.
-    fn print_buffer();
+    fn print_buffer(&self);
 }
 
 /// Simple struct holding state
@@ -58,17 +58,16 @@ pub struct TroffTermWriter {
     /// stack to track indentation scopes
     /// TODO: redundant with prev_indent?
     margin_stack: Vec<usize>,
+
+    /// A string buffer that owners of this struct
+    /// can append to, and ultimately flush to terminal
+    output_buf: String,
 }
 
 impl TroffTermWriter {
     /// Clear bold/italic/underlined properties
     pub fn reset_font_properties(&mut self) {
         self.font_style = Default::default();
-    }
-
-    pub fn set_indent(&mut self, indent: usize) {
-        //self.prev_indent = Some(self.indent);
-        self.indent = indent;
     }
 
     pub fn indent(&self) -> usize {
@@ -148,4 +147,20 @@ impl TroffTermWriter {
     // pub fn text_start_pos(&self) -> usize {
     //     self.margin + self.indent
     // }
+}
+
+impl TermWriter for TroffTermWriter {
+    /// Add a single line of text, inserting linebreaks if it exceeds the limit
+    fn add_line_tobuf(&mut self, line: &str) {
+        self.output_buf.push_str(line);
+    }
+
+    /// Set the indent to be used when adding lines
+    /// (line breaks will also respect the indent)
+    fn set_indent(&mut self, count: usize) {
+        self.indent = count;
+    }
+
+    /// Write the buffer out to stdout.
+    fn print_buffer(&self) {}
 }
