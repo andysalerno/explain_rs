@@ -3,7 +3,7 @@ const DEFAULT_MARGIN_INCREASE: usize = 5;
 
 pub trait TermWriter {
     /// Add a single line of text, inserting linebreaks if it exceeds the limit
-    fn add_line_tobuf(&mut self, line: &str);
+    fn add_to_buf(&mut self, line: &str);
 
     /// Set the indent to be used when adding lines
     /// (line breaks will also respect the indent)
@@ -151,7 +151,7 @@ impl TroffTermWriter {
 
 impl TermWriter for TroffTermWriter {
     /// Add a single line of text, inserting linebreaks if it exceeds the limit
-    fn add_line_tobuf(&mut self, line: &str) {
+    fn add_to_buf(&mut self, line: &str) {
         self.output_buf.push_str(line);
     }
 

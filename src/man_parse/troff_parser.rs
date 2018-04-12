@@ -22,7 +22,7 @@ where
     current_section: Option<ManSection>,
 
     /// if a section was requested via '-s', store its text here
-    section_text: String,
+    // section_text: String,
 
     /// also a string of section text, but *before* formatting (for debug)
     before_section_text: String,
@@ -43,7 +43,7 @@ where
             tokens: Default::default(),
             current_token: Default::default(),
             current_section: Default::default(),
-            section_text: Default::default(),
+            // section_text: Default::default(),
             before_section_text: Default::default(),
             parse_section: Default::default(),
             term_writer: Default::default(),
@@ -704,19 +704,22 @@ where
         &self.before_section_text
     }
 
-    pub fn section_text(&self) -> &str {
-        &self.section_text
-    }
+    // TODO: delete
+    // pub fn section_text(&self) -> &str {
+    //     &self.section_text
+    // }
 
     /// Add a linebreak to the output,
     /// and also indent from the left based on the current style.
     fn add_linebreak(&mut self) {
-        self.add_to_output(LINEBREAK);
+        self.term_writer.add_to_buf(LINEBREAK);
 
-        // newlines must receive the current left-margin indent
-        for _ in 0..self.term_writer.text_start_pos() {
-            self.add_to_output(SPACE);
-        }
+        // self.add_to_output(LINEBREAK);
+
+        // // newlines must receive the current left-margin indent
+        // for _ in 0..self.term_writer.text_start_pos() {
+        //     self.add_to_output(SPACE);
+        // }
     }
 
     fn add_blank_line(&mut self) {
@@ -726,20 +729,21 @@ where
     }
 
     fn add_to_output(&mut self, s: &str) {
-        if self.parse_section.is_some() && self.parse_section == self.current_section {
-            if self.term_writer.bold {
-                let bold = s.bold();
-                self.section_text.push_str(&bold);
-            } else if self.term_writer.italic {
-                let italic = s.underlined();
-                self.section_text.push_str(&italic);
-            } else if self.term_writer.underlined {
-                let underlined = s.underlined();
-                self.section_text.push_str(&underlined);
-            } else {
-                self.section_text.push_str(s);
-            }
-        }
+        self.term_writer.add_to_buf(s);
+        // if self.parse_section.is_some() && self.parse_section == self.current_section {
+        //     if self.term_writer.bold {
+        //         let bold = s.bold();
+        //         self.section_text.push_str(&bold);
+        //     } else if self.term_writer.italic {
+        //         let italic = s.underlined();
+        //         self.section_text.push_str(&italic);
+        //     } else if self.term_writer.underlined {
+        //         let underlined = s.underlined();
+        //         self.section_text.push_str(&underlined);
+        //     } else {
+        //         self.section_text.push_str(s);
+        //     }
+        // }
     }
 
     fn add_to_before_output(&mut self, s: &str) {
