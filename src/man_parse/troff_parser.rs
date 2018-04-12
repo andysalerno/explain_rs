@@ -1,14 +1,18 @@
-use man_parse::font_style::FontStyle;
+extern crate term_size;
+
 use man_parse::man_section::ManSection;
+use man_parse::troff_term_writer::FontStyle;
+use man_parse::troff_term_writer::TroffTermWriter;
 use man_parse::troff_tokenize::TroffToken;
 use simple_parser::token::Token;
-use text_format::text_format::TextFormat;
 use std;
+use text_format::text_format::TextFormat;
 
 const LINEBREAK: &str = "\n";
 const SPACE: &str = " ";
 const DEFAULT_PAR_INDENT: usize = 10;
 const DEFAULT_TAG_INDENT: usize = 5;
+const DEFAULT_TERM_WIDTH: usize = 80;
 
 pub struct TroffParser<'a, I>
 where
@@ -27,8 +31,8 @@ where
     /// if a section was requested via '-s', this is the requested section
     parse_section: Option<ManSection>,
 
-    /// current state of font styling
-    font_style: FontStyle,
+    /// functionality for writing output and styling text
+    term_writer: TroffTermWriter,
 }
 
 impl<'a, I> TroffParser<'a, I>
@@ -43,7 +47,7 @@ where
             section_text: Default::default(),
             before_section_text: Default::default(),
             parse_section: Default::default(),
-            font_style: Default::default(),
+            term_writer: Default::default(),
         }
     }
 
@@ -74,7 +78,7 @@ where
             return;
         };
 
-        if self.font_style.nofill && tok.starts_line {
+        if self.term_writer.is_nofill() && tok.starts_line {
             self.add_linebreak();
         }
 
@@ -162,11 +166,8 @@ where
     fn parse_p(&mut self) {
         self.consume();
 
-        // TODO: just recreate the default FontStyle
-        self.font_style.set_indent(0);
-        self.font_style.bold = false;
-        self.font_style.italic = false;
-        self.font_style.underlined = false;
+        self.term_writer.set_indent(0);
+        self.term_writer.reset_font_properties();
 
         self.add_linebreak();
         self.add_linebreak();
@@ -188,7 +189,7 @@ where
             }
         }
 
-        self.font_style.set_indent(indent);
+        self.term_writer.set_indent(indent);
     }
 
     /// .TP [Indent]\n[Label]\n[Paragraph]
@@ -220,17 +221,17 @@ where
         // and the paragraph indent level, where the paragraph starts.
 
         // output the tag on a new line
-        let prev_indent = self.font_style.indent();
-        self.font_style.set_indent(DEFAULT_TAG_INDENT);
+        let prev_indent = self.term_writer.indent();
+        self.term_writer.set_indent(DEFAULT_TAG_INDENT);
         self.add_linebreak();
         self.consume_spaces();
         self.parse_line();
 
-        self.font_style.set_indent(para_indent);
+        self.term_writer.set_indent(para_indent);
         // now parse the paragraph line
         self.add_linebreak();
 
-        self.font_style.set_indent(prev_indent);
+        self.term_writer.set_indent(prev_indent);
 
         // really we want to parse until a newline, instead of a newline token
         //self.parse_line();
@@ -244,7 +245,7 @@ where
         self.consume_val(".IP");
 
         // zero indent so tag starts at margin
-        self.font_style.zero_indent();
+        self.term_writer.zero_indent();
 
         // create a blank line before writing the tag
         self.add_blank_line();
@@ -262,7 +263,7 @@ where
 
         // next optional arg is the width to indent for the paragraph
         let indent_tok = self.parse_macro_arg().next();
-        let default = self.font_style.prev_indent();
+        let default = self.term_writer.prev_indent();
         let indent_count = if indent_tok.is_some() {
             let f_val = indent_tok
                 .unwrap()
@@ -275,7 +276,7 @@ where
         };
 
         // set indent before printing paragraph
-        self.font_style.set_indent(indent_count);
+        self.term_writer.set_indent(indent_count);
 
         // start paragraph on newline
         self.add_linebreak();
@@ -295,15 +296,15 @@ where
             indent_arg.unwrap().value.parse::<usize>().unwrap()
         } else {
             // else we get it from the last TP, IP, HP, or default
-            self.font_style.prev_indent()
+            self.term_writer.prev_indent()
         };
 
-        self.font_style.increase_margin(increase);
+        self.term_writer.increase_margin(increase);
 
         println!("did rs with increase: {}", increase);
 
         // indent value is then reset to default
-        self.font_style.zero_indent();
+        self.term_writer.zero_indent();
         self.add_linebreak();
     }
 
@@ -321,7 +322,7 @@ where
         };
 
         for _ in 0..pops {
-            self.font_style.pop_margin();
+            self.term_writer.pop_margin();
         }
     }
 
@@ -380,20 +381,20 @@ where
     /// or the very next line if there are no same-line values.
     fn parse_b(&mut self) {
         self.consume_class(TroffToken::Macro);
-        self.font_style.bold = true;
+        self.term_writer.set_fontstyle(FontStyle::Bold);
 
         self.parse_line();
 
-        self.font_style.bold = false;
+        self.term_writer.unset_fontstyle(FontStyle::Bold);
     }
 
     /// Sets the rest of the line to bold,
     /// or the very next line if there are no same-line values.
     fn parse_i(&mut self) {
         self.consume_class(TroffToken::Macro);
-        self.font_style.italic = true;
+        self.term_writer.set_fontstyle(FontStyle::Italic);
         self.parse_line();
-        self.font_style.italic = false;
+        self.term_writer.unset_fontstyle(FontStyle::Italic)
     }
 
     /// Alternates between italic and regular.
@@ -412,9 +413,9 @@ where
             }
 
             if italic {
-                self.font_style.underlined = true;
+                self.term_writer.set_fontstyle(FontStyle::Underlined);
                 self.parse_textword();
-                self.font_style.underlined = false;
+                self.term_writer.unset_fontstyle(FontStyle::Underlined);
             } else {
                 self.parse_textword();
             }
@@ -448,14 +449,14 @@ where
 
             if bold {
                 println!("bold: {:?}", tok);
-                self.font_style.bold = true;
+                self.term_writer.set_fontstyle(FontStyle::Bold);
                 self.parse_word();
-                self.font_style.bold = false;
+                self.term_writer.unset_fontstyle(FontStyle::Bold);
             } else {
                 println!("underlined: {:?}", tok);
-                self.font_style.underlined = true;
+                self.term_writer.set_fontstyle(FontStyle::Underlined);
                 self.parse_word();
-                self.font_style.underlined = false;
+                self.term_writer.unset_fontstyle(FontStyle::Underlined);
             }
         }
     }
@@ -475,13 +476,13 @@ where
     fn parse_nf(&mut self) {
         self.consume();
         self.add_to_output(LINEBREAK);
-        self.font_style.nofill = true;
+        self.term_writer.enable_nofill();
     }
 
     /// Ends no-fill mode.
     fn parse_fi(&mut self) {
         self.consume();
-        self.font_style.nofill = false;
+        self.term_writer.disable_nofill();
     }
 
     /// Adds a linebreak.
@@ -533,9 +534,9 @@ where
         if let Some(tok) = self.current_token() {
             // next arg must be the formatting choice
             match tok.value.as_str() {
-                "B" => self.font_style.bold = true,
-                "I" => self.font_style.italic = true,
-                "R" | "P" => self.font_style.reset_font_properties(),
+                "B" => self.term_writer.set_fontstyle(FontStyle::Bold),
+                "I" => self.term_writer.set_fontstyle(FontStyle::Italic),
+                "R" | "P" => self.term_writer.reset_font_properties(),
                 _ => {}
             }
 
@@ -714,7 +715,7 @@ where
         self.add_to_output(LINEBREAK);
 
         // newlines must receive the current left-margin indent
-        for _ in 0..self.font_style.text_start_pos() {
+        for _ in 0..self.term_writer.text_start_pos() {
             self.add_to_output(SPACE);
         }
     }
@@ -727,13 +728,13 @@ where
 
     fn add_to_output(&mut self, s: &str) {
         if self.parse_section.is_some() && self.parse_section == self.current_section {
-            if self.font_style.bold {
+            if self.term_writer.bold {
                 let bold = s.bold();
                 self.section_text.push_str(&bold);
-            } else if self.font_style.italic {
+            } else if self.term_writer.italic {
                 let italic = s.underlined();
                 self.section_text.push_str(&italic);
-            } else if self.font_style.underlined {
+            } else if self.term_writer.underlined {
                 let underlined = s.underlined();
                 self.section_text.push_str(&underlined);
             } else {
