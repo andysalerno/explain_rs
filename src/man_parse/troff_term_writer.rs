@@ -1,5 +1,8 @@
+extern crate term_size;
+
 const DEFAULT_INDENT: usize = 5;
 const DEFAULT_MARGIN_INCREASE: usize = 5;
+const DEFAULT_LINE_LENGTH: usize = 80;
 const LINEBREAK: &str = "\n";
 const SPACE: &str = " ";
 
@@ -16,6 +19,13 @@ pub enum FontStyle {
     Bold,
     Italic,
     Underlined,
+}
+
+fn term_width() -> usize {
+    let width = term_size::dimensions()
+        .unwrap_or((DEFAULT_LINE_LENGTH, 0))
+        .0;
+    width
 }
 
 /// A Troff-knowledgeable terminal writer.
@@ -38,7 +48,7 @@ pub struct TroffTermWriter {
     /// History of scoped indentations
     prev_indent: Option<usize>,
 
-    /// The distance from the left of the page where text can begin.
+    /// The distance from the left of the page where text can begi.
     /// AKA the "left margin" or "page offset" location
     margin: usize,
 
@@ -55,6 +65,13 @@ pub struct TroffTermWriter {
 }
 
 impl TroffTermWriter {
+    pub fn new() -> Self {
+        let mut tw: Self = Default::default();
+        tw.line_length = term_width();
+
+        tw
+    }
+
     /// Clear bold/italic/underlined properties
     pub fn reset_font_properties(&mut self) {
         self.font_style = Default::default();
