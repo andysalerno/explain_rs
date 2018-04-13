@@ -1,7 +1,7 @@
 extern crate term_size;
 
 use man_parse::man_section::ManSection;
-use man_parse::troff_term_writer::{FontStyle, TermWriter, TroffTermWriter};
+use man_parse::troff_term_writer::{FontStyle, TroffTermWriter};
 use man_parse::troff_tokenize::TroffToken;
 use simple_parser::token::Token;
 use std;
@@ -78,7 +78,7 @@ where
         };
 
         if self.term_writer.is_nofill() && tok.starts_line {
-            self.add_linebreak();
+            self.term_writer.add_linebreak();
         }
 
         if tok.class == TroffToken::Macro {
@@ -156,8 +156,7 @@ where
     /// an empty line in troff generates an empty output line
     fn parse_empty_line(&mut self) {
         self.consume_class(TroffToken::EmptyLine);
-        self.add_linebreak();
-        self.add_linebreak();
+        self.add_blank_line();
     }
 
     /// .P, .PP, or .LP (all mutual aliases)
@@ -168,8 +167,7 @@ where
         self.term_writer.set_indent(0);
         self.term_writer.reset_font_properties();
 
-        self.add_linebreak();
-        self.add_linebreak();
+        self.add_blank_line();
     }
 
     /// .PD [Distance]
@@ -222,13 +220,13 @@ where
         // output the tag on a new line
         let prev_indent = self.term_writer.indent();
         self.term_writer.set_indent(DEFAULT_TAG_INDENT);
-        self.add_linebreak();
+        self.term_writer.add_linebreak();
         self.consume_spaces();
         self.parse_line();
 
         self.term_writer.set_indent(para_indent);
         // now parse the paragraph line
-        self.add_linebreak();
+        self.term_writer.add_linebreak();
 
         self.term_writer.set_indent(prev_indent);
 
@@ -278,7 +276,7 @@ where
         self.term_writer.set_indent(indent_count);
 
         // start paragraph on newline
-        self.add_linebreak();
+        self.term_writer.add_linebreak();
 
         // parse the paragraph
         self.parse_line();
@@ -304,7 +302,7 @@ where
 
         // indent value is then reset to default
         self.term_writer.zero_indent();
-        self.add_linebreak();
+        self.term_writer.add_linebreak();
     }
 
     /// decreases the margin by a certain depth
@@ -487,7 +485,7 @@ where
     /// Adds a linebreak.
     fn parse_br(&mut self) {
         self.consume();
-        self.add_linebreak();
+        self.term_writer.add_linebreak();
     }
 
     /// Parses a backslash, which escapes some value.
@@ -599,7 +597,7 @@ where
         }
 
         for _ in 0..linebreaks {
-            self.add_linebreak();
+            self.term_writer.add_linebreak();
         }
     }
 
@@ -704,27 +702,13 @@ where
         &self.before_section_text
     }
 
-    // TODO: delete
-    // pub fn section_text(&self) -> &str {
-    //     &self.section_text
-    // }
-
-    /// Add a linebreak to the output,
-    /// and also indent from the left based on the current style.
-    fn add_linebreak(&mut self) {
-        self.term_writer.add_to_buf(LINEBREAK);
-
-        // self.add_to_output(LINEBREAK);
-
-        // // newlines must receive the current left-margin indent
-        // for _ in 0..self.term_writer.text_start_pos() {
-        //     self.add_to_output(SPACE);
-        // }
+    pub fn section_text(&self) -> &str {
+        self.term_writer.buf()
     }
 
     fn add_blank_line(&mut self) {
         for _ in 0..2 {
-            self.add_linebreak();
+            self.term_writer.add_linebreak();
         }
     }
 

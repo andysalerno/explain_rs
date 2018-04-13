@@ -1,17 +1,7 @@
 const DEFAULT_INDENT: usize = 5;
 const DEFAULT_MARGIN_INCREASE: usize = 5;
-
-pub trait TermWriter {
-    /// Add a single line of text, inserting linebreaks if it exceeds the limit
-    fn add_to_buf(&mut self, line: &str);
-
-    /// Set the indent to be used when adding lines
-    /// (line breaks will also respect the indent)
-    fn set_indent(&mut self, count: usize);
-
-    /// Write the buffer out to stdout.
-    fn print_buffer(&self);
-}
+const LINEBREAK: &str = "\n";
+const SPACE: &str = " ";
 
 /// Simple struct holding state
 /// for font styling: bold, italic, underlined
@@ -141,26 +131,30 @@ impl TroffTermWriter {
         }
     }
 
-    // Get the text starting position in a new line.
-    // This is simply the margin + indent.
-    // Most text should start after this many spaces on a line.
-    // pub fn text_start_pos(&self) -> usize {
-    //     self.margin + self.indent
-    // }
-}
-
-impl TermWriter for TroffTermWriter {
     /// Add a single line of text, inserting linebreaks if it exceeds the limit
-    fn add_to_buf(&mut self, line: &str) {
+    pub fn add_to_buf(&mut self, line: &str) {
         self.output_buf.push_str(line);
+    }
+
+    pub fn buf(&self) -> &str {
+        &self.output_buf
     }
 
     /// Set the indent to be used when adding lines
     /// (line breaks will also respect the indent)
-    fn set_indent(&mut self, count: usize) {
+    pub fn set_indent(&mut self, count: usize) {
         self.indent = count;
     }
 
-    /// Write the buffer out to stdout.
-    fn print_buffer(&self) {}
+    pub fn add_linebreak(&mut self) {
+        self.add_to_buf(LINEBREAK);
+
+        for _ in 0..self.text_start_pos() {
+            self.add_to_buf(SPACE);
+        }
+    }
+
+    fn text_start_pos(&self) -> usize {
+        self.margin + self.indent
+    }
 }
