@@ -1,8 +1,12 @@
 extern crate term_size;
+use std::cmp;
 
 const DEFAULT_INDENT: usize = 5;
 const DEFAULT_MARGIN_INCREASE: usize = 5;
+
 const DEFAULT_LINE_LENGTH: usize = 80;
+const MIN_LINE_LENGTH: usize = 80;
+
 const LINEBREAK: &str = "\n";
 const SPACE: &str = " ";
 
@@ -25,7 +29,10 @@ fn term_width() -> usize {
     let width = term_size::dimensions()
         .unwrap_or((DEFAULT_LINE_LENGTH, 0))
         .0;
-    width
+
+    // if their term width is below a certain amount,
+    // we have a cutoff so our output remains sane.
+    cmp::max(width, MIN_LINE_LENGTH)
 }
 
 /// A Troff-knowledgeable terminal writer.
@@ -53,6 +60,7 @@ pub struct TroffTermWriter {
     margin: usize,
 
     /// The maximum length in characters of a line, before it is wrapped.
+    /// Margin and indent count towards this limit.
     line_length: usize,
 
     /// stack to track indentation scopes
@@ -62,6 +70,10 @@ pub struct TroffTermWriter {
     /// A string buffer that owners of this struct
     /// can append to, and ultimately flush to terminal
     output_buf: String,
+
+    /// The length of the current line being written.
+    /// When this exceeds line_length, we will wrap.
+    cur_line_len: usize,
 }
 
 impl TroffTermWriter {
@@ -150,6 +162,12 @@ impl TroffTermWriter {
 
     /// Add a single line of text, inserting linebreaks if it exceeds the limit
     pub fn add_to_buf(&mut self, line: &str) {
+        // TODO: need to not count zero-width chars (and count >1 width chars?)
+        if self.cur_line_len + line.len() > self.line_length {
+            self.add_linebreak();
+        }
+
+        self.cur_line_len += line.len();
         self.output_buf.push_str(line);
     }
 
@@ -164,6 +182,8 @@ impl TroffTermWriter {
     }
 
     pub fn add_linebreak(&mut self) {
+        self.cur_line_len = 0;
+
         self.add_to_buf(LINEBREAK);
 
         for _ in 0..self.text_start_pos() {

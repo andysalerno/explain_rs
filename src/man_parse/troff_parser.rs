@@ -1,5 +1,3 @@
-extern crate term_size;
-
 use man_parse::man_section::ManSection;
 use man_parse::troff_term_writer::{FontStyle, TroffTermWriter};
 use man_parse::troff_tokenize::TroffToken;
@@ -46,7 +44,7 @@ where
             // section_text: Default::default(),
             before_section_text: Default::default(),
             parse_section: Default::default(),
-            term_writer: Default::default(),
+            term_writer: TroffTermWriter::new(),
         }
     }
 
