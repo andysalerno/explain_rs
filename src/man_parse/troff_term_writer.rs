@@ -5,6 +5,7 @@ const DEFAULT_INDENT: usize = 5;
 const DEFAULT_MARGIN_INCREASE: usize = 5;
 
 const DEFAULT_LINE_LENGTH: usize = 80;
+const RIGHT_MARGIN_LENGTH: usize = 8;
 const MIN_LINE_LENGTH: usize = 80;
 
 const LINEBREAK: &str = "\n";
@@ -32,7 +33,7 @@ fn term_width() -> usize {
 
     // if their term width is below a certain amount,
     // we have a cutoff so our output remains sane.
-    cmp::max(width, MIN_LINE_LENGTH)
+    cmp::max(width, MIN_LINE_LENGTH) - RIGHT_MARGIN_LENGTH
 }
 
 /// A Troff-knowledgeable terminal writer.
@@ -185,6 +186,8 @@ impl TroffTermWriter {
         self.cur_line_len = 0;
 
         self.add_to_buf(LINEBREAK);
+
+        self.cur_line_len = 0;
 
         for _ in 0..self.text_start_pos() {
             self.add_to_buf(SPACE);

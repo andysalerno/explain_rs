@@ -329,26 +329,29 @@ where
     fn parse_macro_arg(&mut self) -> std::vec::IntoIter<I::Item> {
         self.consume_spaces();
 
-        let mut result = Vec::new();
-
         if let Some(tok) = self.current_token() {
             // args are always on the same line
             if tok.starts_line {
-                return result.into_iter();
+                return Vec::new().into_iter();
             }
 
             if tok.class == TroffToken::DoubleQuote {
                 return self.parse_within_quotes().into_iter();
             } else {
-                result.push(tok);
+                let result = vec![tok];
                 self.consume();
                 return result.into_iter();
             }
+        } else {
+            return Vec::new().into_iter();
         }
-
-        return result.into_iter();
     }
 
+    /// When the current token is a doublequote,
+    /// return a vector of every token between
+    /// this doublequote and an ending doublequote on the same line.
+    /// (returns early if a newline is encountered before a closing doublequote)
+    /// (does not include tokens that are Spaces)
     fn parse_within_quotes(&mut self) -> Vec<I::Item> {
         self.consume_class(TroffToken::DoubleQuote);
 
@@ -605,23 +608,22 @@ where
     /// you can use quotes to captures spaces and multiple words.
     /// This currently only captures one word, and assumes doublequotes.
     fn parse_sh(&mut self) {
-        self.consume();
+        self.consume_val(".SH");
 
-        if self.current_token.unwrap().class == TroffToken::DoubleQuote {
-            self.parse_doublequote();
+        let mut sh_args = self.parse_macro_arg();
+        let mut arg_str = String::new();
+
+        for arg in sh_args {
+            arg_str.push_str(&arg.value);
         }
 
-        if let Some(cur_tok) = self.current_token() {
-            self.current_section = match cur_tok.value.as_str() {
-                "NAME" => Some(ManSection::Name),
-                "SYNOPSIS" => Some(ManSection::Synopsis),
-                "DESCRIPTION" => Some(ManSection::Description),
-                "OPTIONS" => Some(ManSection::Options),
-                _ => Some(ManSection::Unknown),
-            };
-        }
-
-        self.consume();
+        self.current_section = match arg_str.as_str() {
+            "NAME" => Some(ManSection::Name),
+            "SYNOPSIS" => Some(ManSection::Synopsis),
+            "DESCRIPTION" => Some(ManSection::Description),
+            "OPTIONS" => Some(ManSection::Options),
+            _ => Some(ManSection::Unknown),
+        };
     }
 
     /// we aren't smart enough to evaluate expressions
@@ -711,21 +713,9 @@ where
     }
 
     fn add_to_output(&mut self, s: &str) {
-        self.term_writer.add_to_buf(s);
-        // if self.parse_section.is_some() && self.parse_section == self.current_section {
-        //     if self.term_writer.bold {
-        //         let bold = s.bold();
-        //         self.section_text.push_str(&bold);
-        //     } else if self.term_writer.italic {
-        //         let italic = s.underlined();
-        //         self.section_text.push_str(&italic);
-        //     } else if self.term_writer.underlined {
-        //         let underlined = s.underlined();
-        //         self.section_text.push_str(&underlined);
-        //     } else {
-        //         self.section_text.push_str(s);
-        //     }
-        // }
+        if self.parse_section.is_some() && self.parse_section == self.current_section {
+            self.term_writer.add_to_buf(s);
+        }
     }
 
     fn add_to_before_output(&mut self, s: &str) {
