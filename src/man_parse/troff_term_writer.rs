@@ -163,6 +163,11 @@ impl TroffTermWriter {
 
     /// Add a single line of text, inserting linebreaks if it exceeds the limit
     pub fn add_to_buf(&mut self, line: &str) {
+        if line == "\n" {
+            self.add_linebreak();
+            return;
+        }
+
         // TODO: need to not count zero-width chars (and count >1 width chars?)
         if self.cur_line_len + line.len() > self.line_length {
             self.add_linebreak();
@@ -185,7 +190,7 @@ impl TroffTermWriter {
     pub fn add_linebreak(&mut self) {
         self.cur_line_len = 0;
 
-        self.add_to_buf(LINEBREAK);
+        self.output_buf.push_str(LINEBREAK);
 
         self.cur_line_len = 0;
 

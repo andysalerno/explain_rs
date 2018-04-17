@@ -5,7 +5,6 @@ use simple_parser::token::Token;
 use std;
 use text_format::text_format::TextFormat;
 
-const LINEBREAK: &str = "\n";
 const SPACE: &str = " ";
 const DEFAULT_PAR_INDENT: usize = 10;
 const DEFAULT_TAG_INDENT: usize = 5;
@@ -76,7 +75,7 @@ where
         };
 
         if self.term_writer.is_nofill() && tok.starts_line {
-            self.term_writer.add_linebreak();
+            self.add_linebreak();
         }
 
         if tok.class == TroffToken::Macro {
@@ -218,13 +217,13 @@ where
         // output the tag on a new line
         let prev_indent = self.term_writer.indent();
         self.term_writer.set_indent(DEFAULT_TAG_INDENT);
-        self.term_writer.add_linebreak();
+        self.add_linebreak();
         self.consume_spaces();
         self.parse_line();
 
         self.term_writer.set_indent(para_indent);
         // now parse the paragraph line
-        self.term_writer.add_linebreak();
+        self.add_linebreak();
 
         self.term_writer.set_indent(prev_indent);
 
@@ -274,7 +273,7 @@ where
         self.term_writer.set_indent(indent_count);
 
         // start paragraph on newline
-        self.term_writer.add_linebreak();
+        self.add_linebreak();
 
         // parse the paragraph
         self.parse_line();
@@ -300,7 +299,7 @@ where
 
         // indent value is then reset to default
         self.term_writer.zero_indent();
-        self.term_writer.add_linebreak();
+        self.add_linebreak();
     }
 
     /// decreases the margin by a certain depth
@@ -473,7 +472,7 @@ where
     /// Begin no-fill mode, and add a linebreak.
     fn parse_nf(&mut self) {
         self.consume();
-        self.add_to_output(LINEBREAK);
+        self.add_linebreak();
         self.term_writer.enable_nofill();
     }
 
@@ -486,7 +485,7 @@ where
     /// Adds a linebreak.
     fn parse_br(&mut self) {
         self.consume();
-        self.term_writer.add_linebreak();
+        self.add_linebreak();
     }
 
     /// Parses a backslash, which escapes some value.
@@ -598,7 +597,7 @@ where
         }
 
         for _ in 0..linebreaks {
-            self.term_writer.add_linebreak();
+            self.add_linebreak();
         }
     }
 
@@ -610,7 +609,7 @@ where
     fn parse_sh(&mut self) {
         self.consume_val(".SH");
 
-        let mut sh_args = self.parse_macro_arg();
+        let sh_args = self.parse_macro_arg();
         let mut arg_str = String::new();
 
         for arg in sh_args {
@@ -656,7 +655,7 @@ where
         };
 
         if token.starts_line {
-            format!("{}{} ", LINEBREAK, val)
+            format!("{}{} ", "\n", val)
         } else {
             format!("{} ", val)
         }
@@ -706,20 +705,30 @@ where
         self.term_writer.buf()
     }
 
+    fn section_matches(&self) -> bool {
+        self.parse_section.is_some() && self.parse_section == self.current_section
+    }
+
     fn add_blank_line(&mut self) {
         for _ in 0..2 {
+            self.add_linebreak();
+        }
+    }
+
+    fn add_linebreak(&mut self) {
+        if self.section_matches() {
             self.term_writer.add_linebreak();
         }
     }
 
     fn add_to_output(&mut self, s: &str) {
-        if self.parse_section.is_some() && self.parse_section == self.current_section {
+        if self.section_matches() {
             self.term_writer.add_to_buf(s);
         }
     }
 
     fn add_to_before_output(&mut self, s: &str) {
-        if self.parse_section.is_some() && self.parse_section == self.current_section {
+        if self.section_matches() {
             self.before_section_text.push_str(s);
         }
     }
