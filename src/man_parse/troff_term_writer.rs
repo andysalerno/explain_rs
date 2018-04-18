@@ -1,4 +1,5 @@
 extern crate term_size;
+use man_parse::font_style::{FontStyle, FontStyleState};
 use std::cmp;
 
 const DEFAULT_INDENT: usize = 5;
@@ -10,21 +11,6 @@ const MIN_LINE_LENGTH: usize = 80;
 
 const LINEBREAK: &str = "\n";
 const SPACE: &str = " ";
-
-/// Simple struct holding state
-/// for font styling: bold, italic, underlined
-#[derive(Default)]
-struct FontStyleState {
-    bold: bool,
-    italic: bool,
-    underlined: bool,
-}
-
-pub enum FontStyle {
-    Bold,
-    Italic,
-    Underlined,
-}
 
 fn term_width() -> usize {
     let width = term_size::dimensions()
@@ -154,11 +140,7 @@ impl TroffTermWriter {
     }
 
     fn set_fontstyle_value(&mut self, s: FontStyle, val: bool) {
-        match s {
-            FontStyle::Bold => self.font_style.bold = val,
-            FontStyle::Italic => self.font_style.italic = val,
-            FontStyle::Underlined => self.font_style.underlined = val,
-        }
+        self.font_style.set_fontstyle_value(s, val);
     }
 
     /// Add a single line of text, inserting linebreaks if it exceeds the limit
@@ -174,7 +156,12 @@ impl TroffTermWriter {
         }
 
         self.cur_line_len += line.len();
-        self.output_buf.push_str(line);
+
+        if let Some(stylized) = self.font_style.stylize_text(line) {
+            self.output_buf.push_str(&stylized);
+        } else {
+            self.output_buf.push_str(line);
+        }
     }
 
     pub fn buf(&self) -> &str {

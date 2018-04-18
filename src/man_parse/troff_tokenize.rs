@@ -95,7 +95,7 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
                     }
 
                     let mut advance_count = 0;
-                    let args = get_escaped_args_(&word[next_index + 1..]);
+                    let args = get_escaped_args(&word[next_index + 1..]);
 
                     for arg in args {
                         advance_count += arg.value.len();
@@ -155,7 +155,7 @@ fn command_has_args(command: char) -> bool {
 /// c -> c
 /// (co -> (, co
 /// [color] -> [, color, ]
-fn get_escaped_args_(word: &str) -> Vec<Token<TroffToken>> {
+fn get_escaped_args(word: &str) -> Vec<Token<TroffToken>> {
     let mut v = Vec::new();
 
     // accepted arg patterns are like:
