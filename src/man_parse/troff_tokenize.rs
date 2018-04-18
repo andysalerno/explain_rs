@@ -25,16 +25,10 @@ pub enum TroffToken {
     EmptyLine,
 }
 
-/// Used when parsing macro arguments --
-/// the str is the argument itself,
-/// the usize is the full size of the args
-/// section
-struct MacroArgs<'a>(&'a str, usize);
-
-struct MacroArgs_<'a>(Vec<&'a str>);
-
 // TODO: implement #[derive(TokenClass)] macro...
 impl TokenClass for TroffToken {}
+
+const SPACE: &str = " ";
 
 pub struct TroffClassifier;
 
@@ -96,6 +90,10 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
 
                     // after the escaped token, we might now have an argument
                     // i.e., '\fB' takes arg 'B'
+                    if !command_has_args(command_char) {
+                        continue;
+                    }
+
                     let mut advance_count = 0;
                     let args = get_escaped_args_(&word[next_index + 1..]);
 
@@ -123,7 +121,7 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
 
         // this exists because we must differentiate between
         // the tokens resulting from '\fBHello' and '\ f B Hello'
-        tokens.push(Token::new(TroffToken::Space, " ".to_string(), false));
+        tokens.push(Token::new(TroffToken::Space, SPACE.to_string(), false));
 
         tokens
     }
@@ -134,6 +132,29 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
     }
 }
 
+/// Given an escaped command char, does it have args?
+/// I.e., \fBboldword is
+/// an escape char \,
+/// a command char f,
+/// an argument B,
+/// and a word boldword.
+/// So an escaped 'f' may have args.
+/// However, \- is simply the escape for '-',
+/// so it does not have args.
+fn command_has_args(command: char) -> bool {
+    match command {
+        'f' | 'm' => true,
+        _ => false,
+    }
+}
+
+/// Given a word that appears after an escaped char,
+/// split the word as necessary into the argument tokens.
+/// I.e., the following inputs should give the following outputs,
+/// assuming the part before 'word' is: \m
+/// c -> c
+/// (co -> (, co
+/// [color] -> [, color, ]
 fn get_escaped_args_(word: &str) -> Vec<Token<TroffToken>> {
     let mut v = Vec::new();
 
@@ -141,6 +162,7 @@ fn get_escaped_args_(word: &str) -> Vec<Token<TroffToken>> {
     // \mc
     // \m(co
     // \m[color]
+    // (word contains content after \m, in this example)
     match word.chars().nth(0) {
         Some('(') => {
             let open_tok = Token::new(TroffToken::ArgOpenParen, "(".to_owned(), false);
@@ -171,54 +193,6 @@ fn get_escaped_args_(word: &str) -> Vec<Token<TroffToken>> {
     };
 
     v
-}
-
-/// Some escape commands can have args,
-/// like '\fB' where the escape command is 'f'
-/// and the arg is 'B'.
-///
-/// Others take no args at all, like \-.
-///
-/// Given a command char, and the slice immediately following it,
-/// return which subset of the slice is made up of args (empty slice if none).
-///
-/// i.e., given command 'f' and word 'BHello',
-/// the result should be 'vec[B]'.
-fn get_escaped_args(command_char: char, potential_args: &str) -> MacroArgs {
-    match command_char {
-        'f' | 'm' => get_command_args(&potential_args),
-        '(' => MacroArgs(&potential_args[0..2], 2),
-
-        // these commands take no args, so always empty slice
-        '-' => MacroArgs(&potential_args[0..0], 0),
-        _ => MacroArgs(&potential_args[0..0], 0),
-    }
-}
-
-fn get_command_args(word: &str) -> MacroArgs {
-    if word.len() == 0 {
-        return MacroArgs(word, 0);
-    }
-
-    match &word[0..1] {
-        // example: \m[blue]BlueText
-        "[" => {
-            let close_index = word.find(']');
-
-            let result = &word[1..close_index.unwrap()];
-
-            println!("found argument: {} inside: {}", result, word);
-
-            // + 2 for the '[' and ']'
-            MacroArgs(result, result.len() + 2)
-        }
-
-        // example: \f(abSomeFormat
-        "(" => MacroArgs(&word[1..3], 3),
-
-        // anything else is just 1 char long
-        _ => MacroArgs(&word[0..1], 1),
-    }
 }
 
 fn try_match_special(c: &char) -> Option<TroffToken> {

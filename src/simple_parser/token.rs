@@ -14,6 +14,7 @@ pub struct Token<C: TokenClass> {
 }
 
 impl<C: TokenClass> Token<C> {
+    // TODO: value should take &str, and copy as necessary
     pub fn new(class: C, value: String, starts_line: bool) -> Token<C> {
         Token {
             class: class,
