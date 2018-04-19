@@ -143,24 +143,26 @@ impl TroffTermWriter {
         self.font_style.set_fontstyle_value(s, val);
     }
 
-    /// Add a single line of text, inserting linebreaks if it exceeds the limit
-    pub fn add_to_buf(&mut self, line: &str) {
-        if line == "\n" {
+    /// Add some text to the output buffer, inserting linebreaks
+    /// if the given text exceeds the limit.
+    /// It's expected that text contains no linebreaks on its own.
+    pub fn add_to_buf(&mut self, text: &str) {
+        if text == "\n" {
             self.add_linebreak();
             return;
         }
 
         // TODO: need to not count zero-width chars (and count >1 width chars?)
-        if self.cur_line_len + line.len() > self.line_length {
+        if self.cur_line_len + text.len() > self.line_length {
             self.add_linebreak();
         }
 
-        self.cur_line_len += line.len();
+        self.cur_line_len += text.len();
 
-        if let Some(stylized) = self.font_style.stylize_text(line) {
+        if let Some(stylized) = self.font_style.stylize_text(text) {
             self.output_buf.push_str(&stylized);
         } else {
-            self.output_buf.push_str(line);
+            self.output_buf.push_str(text);
         }
     }
 

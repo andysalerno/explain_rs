@@ -15,6 +15,8 @@ pub enum FontStyle {
     Underlined,
 }
 
+const SPACE: &str = " ";
+
 impl FontStyleState {
     pub fn set_fontstyle_value(&mut self, s: FontStyle, val: bool) {
         match s {
@@ -25,7 +27,10 @@ impl FontStyleState {
     }
 
     pub fn stylize_text(&self, text: &str) -> Option<String> {
-        let result = String::new();
+        if text == SPACE {
+            // don't stylize emtpy space
+            return None;
+        }
 
         if self.bold {
             return Some(text.bold());
