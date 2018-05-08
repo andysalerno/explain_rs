@@ -189,7 +189,7 @@ where
 
     /// .TP [Indent]\n[Label]\n[Paragraph]
     /// Creates a paragraph tagged with a label.
-    /// The next input line that contains text is the "label", printed flush-left.
+    /// The next input line that contains text is the "label", printed flush-left (to margin).
     /// The line after that is the paragraph text, with "indent" indentation.
     /// If the label is smaller than the indent, the paragraph begins on the same line (not implemented).
     fn parse_tp(&mut self) {
@@ -202,18 +202,12 @@ where
         };
 
         // optional argument specifies indentation of paragraph text
-        let para_indent = if !cur_tok.starts_line {
-            let parsed_indent = cur_tok.value.parse::<usize>().unwrap();
-            self.consume();
-
-            parsed_indent
+        let indent_arg = self.parse_macro_arg().next();
+        let paragraph_indent = if let Some(arg) = indent_arg {
+            arg.value.parse::<usize>().unwrap()
         } else {
-            DEFAULT_PAR_INDENT
+            self.term_writer.prev_indent()
         };
-
-        // there are two indent levels to keep track of
-        // the "flush-left" indent level, where the tag starts
-        // and the paragraph indent level, where the paragraph starts.
 
         // output the tag on a new line
         let prev_indent = self.term_writer.indent();
@@ -222,14 +216,11 @@ where
         self.consume_spaces();
         self.parse_line();
 
-        self.term_writer.set_indent(para_indent);
         // now parse the paragraph line
+        self.term_writer.set_indent(paragraph_indent);
+        self.term_writer.store_prev_indent();
         self.add_linebreak();
-
-        self.term_writer.set_indent(prev_indent);
-
-        // really we want to parse until a newline, instead of a newline token
-        //self.parse_line();
+        self.parse_line();
     }
 
     /// .IP [marker [width]]\n[body]
@@ -272,6 +263,7 @@ where
 
         // set indent before printing paragraph
         self.term_writer.set_indent(indent_count);
+        self.term_writer.store_prev_indent();
 
         // start paragraph on newline
         self.add_linebreak();
@@ -329,10 +321,12 @@ where
     fn parse_macro_arg(&mut self) -> std::vec::IntoIter<I::Item> {
         self.consume_spaces();
 
+        let empty = Vec::new().into_iter();
+
         if let Some(tok) = self.current_token() {
             // args are always on the same line
             if tok.starts_line {
-                return Vec::new().into_iter();
+                return empty;
             }
 
             if tok.class == TroffToken::DoubleQuote {
@@ -343,7 +337,7 @@ where
                 return result.into_iter();
             }
         } else {
-            return Vec::new().into_iter();
+            return empty;
         }
     }
 

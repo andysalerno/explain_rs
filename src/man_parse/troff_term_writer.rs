@@ -3,6 +3,7 @@ use man_parse::font_style::{FontStyle, FontStyleState};
 use std::cmp;
 
 const DEFAULT_INDENT: usize = 5;
+const DEFAULT_PAR_INDENT: usize = 10;
 const DEFAULT_MARGIN_INCREASE: usize = 5;
 
 const DEFAULT_LINE_LENGTH: usize = 80;
@@ -88,15 +89,19 @@ impl TroffTermWriter {
     pub fn prev_indent(&self) -> usize {
         match self.prev_indent {
             Some(v) => v,
-            None => DEFAULT_INDENT,
+            None => DEFAULT_PAR_INDENT,
         }
+    }
+
+    pub fn store_prev_indent(&mut self) {
+        self.prev_indent = Some(self.indent);
     }
 
     pub fn margin(&self) -> usize {
         self.margin
     }
 
-    /// Increase the margine by some count of characters.
+    /// Increase the margin by some count of characters.
     /// The margin is how many chars from the left until the indent begins.
     pub fn increase_margin(&mut self, size: usize) {
         self.margin += size;
@@ -155,6 +160,10 @@ impl TroffTermWriter {
         // TODO: need to not count zero-width chars (and count >1 width chars?)
         if self.cur_line_len + text.len() > self.line_length {
             self.add_linebreak();
+
+            if text == SPACE {
+                return;
+            }
         }
 
         self.cur_line_len += text.len();
@@ -173,12 +182,11 @@ impl TroffTermWriter {
     /// Set the indent to be used when adding lines
     /// (line breaks will also respect the indent)
     pub fn set_indent(&mut self, count: usize) {
+        self.prev_indent = Some(self.indent);
         self.indent = count;
     }
 
     pub fn add_linebreak(&mut self) {
-        self.cur_line_len = 0;
-
         self.output_buf.push_str(LINEBREAK);
 
         self.cur_line_len = 0;
