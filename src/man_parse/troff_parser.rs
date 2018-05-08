@@ -7,8 +7,7 @@ use std;
 use text_format::text_format::TextFormat;
 
 const SPACE: &str = " ";
-const DEFAULT_PAR_INDENT: usize = 10;
-const DEFAULT_TAG_INDENT: usize = 5;
+const DEFAULT_TAG_INDENT: usize = 0;
 const DEFAULT_TERM_WIDTH: usize = 80;
 
 pub struct TroffParser<'a, I>
@@ -162,7 +161,7 @@ where
     fn parse_p(&mut self) {
         self.consume();
 
-        self.term_writer.set_indent(0);
+        self.term_writer.zero_indent();
         self.term_writer.reset_font_properties();
 
         self.add_blank_line();
@@ -249,16 +248,11 @@ where
 
         // next optional arg is the width to indent for the paragraph
         let indent_tok = self.parse_macro_arg().next();
-        let default = self.term_writer.prev_indent();
         let indent_count = if indent_tok.is_some() {
-            let f_val = indent_tok
-                .unwrap()
-                .value
-                .parse::<f32>()
-                .unwrap_or(default as f32);
+            let f_val = indent_tok.unwrap().value.parse::<f32>().unwrap();
             f_val as usize
         } else {
-            default
+            self.term_writer.prev_indent()
         };
 
         // set indent before printing paragraph

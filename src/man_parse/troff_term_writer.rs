@@ -2,8 +2,9 @@ extern crate term_size;
 use man_parse::font_style::{FontStyle, FontStyleState};
 use std::cmp;
 
-const DEFAULT_INDENT: usize = 5;
-const DEFAULT_PAR_INDENT: usize = 10;
+// TODO: change this name, or move to parser -- writer should not care about paragraph
+// troff is inclusive with indent numbering, but I am not, so this is equal to a troff indent of 8
+const DEFAULT_PARAGRAPH_INDENT: usize = 7;
 const DEFAULT_MARGIN_INCREASE: usize = 5;
 
 const DEFAULT_LINE_LENGTH: usize = 80;
@@ -89,7 +90,7 @@ impl TroffTermWriter {
     pub fn prev_indent(&self) -> usize {
         match self.prev_indent {
             Some(v) => v,
-            None => DEFAULT_PAR_INDENT,
+            None => DEFAULT_PARAGRAPH_INDENT,
         }
     }
 
