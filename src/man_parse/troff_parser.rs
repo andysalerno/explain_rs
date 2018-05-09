@@ -7,6 +7,9 @@ use std;
 use text_format::text_format::TextFormat;
 
 const SPACE: &str = " ";
+
+// troff is inclusive with indent numbering, but I am not, so this is equal to a troff indent of 8
+const DEFAULT_PARAGRAPH_INDENT: usize = 7;
 const DEFAULT_TAG_INDENT: usize = 0;
 const DEFAULT_TERM_WIDTH: usize = 80;
 
@@ -205,7 +208,7 @@ where
         let paragraph_indent = if let Some(arg) = indent_arg {
             arg.value.parse::<usize>().unwrap()
         } else {
-            self.term_writer.prev_indent()
+            self.stored_or_default_paragraph_indent()
         };
 
         // output the tag on a new line
@@ -217,7 +220,7 @@ where
 
         // now parse the paragraph line
         self.term_writer.set_indent(paragraph_indent);
-        self.term_writer.store_prev_indent();
+        self.term_writer.store_indent();
         self.add_linebreak();
         self.parse_line();
     }
@@ -252,12 +255,12 @@ where
             let f_val = indent_tok.unwrap().value.parse::<f32>().unwrap();
             f_val as usize
         } else {
-            self.term_writer.prev_indent()
+            self.stored_or_default_paragraph_indent()
         };
 
         // set indent before printing paragraph
         self.term_writer.set_indent(indent_count);
-        self.term_writer.store_prev_indent();
+        self.term_writer.store_indent();
 
         // start paragraph on newline
         self.add_linebreak();
@@ -266,26 +269,30 @@ where
         self.parse_line();
     }
 
-    /// increases the margin by a certain depth
+    /// Macro: .RS [nnn]
+    /// Move the left margin to the right by the value nnn if specified (default unit is ‘n’);
+    /// otherwise it is set to the previous indentation value specified with TP, IP, or HP
+    /// (or to the default value if none of them have been used yet).
+    /// The indentation value is then set to the default.
+    /// Calls to the RS macro can be nested.
+    /// See: https://www.gnu.org/software/groff/manual/html_node/Man-usage.html
     fn parse_rs(&mut self) {
         self.consume_val(".RS");
 
-        let indent_arg = self.parse_macro_arg().next();
+        let margin_increase = {
+            let indent_arg = self.parse_macro_arg().next();
 
-        // first optional arg indicates how much to increase margin
-        let increase = if indent_arg.is_some() {
-            indent_arg.unwrap().value.parse::<usize>().unwrap()
-        } else {
-            // else we get it from the last TP, IP, HP, or default
-            self.term_writer.prev_indent()
+            if indent_arg.is_some() {
+                indent_arg.unwrap().value.parse::<usize>().unwrap()
+            } else {
+                self.stored_or_default_paragraph_indent()
+            }
         };
 
-        self.term_writer.increase_margin(increase);
-
-        println!("did rs with increase: {}", increase);
+        self.term_writer.increase_margin(margin_increase);
 
         // indent value is then reset to default
-        self.term_writer.zero_indent();
+        self.term_writer.set_indent(DEFAULT_PARAGRAPH_INDENT);
         self.add_linebreak();
     }
 
@@ -305,6 +312,9 @@ where
         for _ in 0..pops {
             self.term_writer.pop_margin();
         }
+
+        self.term_writer.set_indent(DEFAULT_PARAGRAPH_INDENT);
+        self.term_writer.store_indent();
     }
 
     /// Parse the next arg for a macro.
@@ -719,6 +729,13 @@ where
     fn add_to_before_output(&mut self, s: &str) {
         if self.section_matches() {
             self.before_section_text.push_str(s);
+        }
+    }
+
+    fn stored_or_default_paragraph_indent(&self) -> usize {
+        match self.term_writer.stored_indent() {
+            Some(indent) => indent,
+            None => DEFAULT_PARAGRAPH_INDENT,
         }
     }
 }

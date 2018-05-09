@@ -2,9 +2,6 @@ extern crate term_size;
 use man_parse::font_style::{FontStyle, FontStyleState};
 use std::cmp;
 
-// TODO: change this name, or move to parser -- writer should not care about paragraph
-// troff is inclusive with indent numbering, but I am not, so this is equal to a troff indent of 8
-const DEFAULT_PARAGRAPH_INDENT: usize = 7;
 const DEFAULT_MARGIN_INCREASE: usize = 5;
 
 const DEFAULT_LINE_LENGTH: usize = 80;
@@ -42,7 +39,7 @@ pub struct TroffTermWriter {
     indent: usize,
 
     /// History of scoped indentations
-    prev_indent: Option<usize>,
+    stored_indent: Option<usize>,
 
     /// The distance from the left of the page where text can begi.
     /// AKA the "left margin" or "page offset" location
@@ -87,15 +84,12 @@ impl TroffTermWriter {
         self.indent = 0;
     }
 
-    pub fn prev_indent(&self) -> usize {
-        match self.prev_indent {
-            Some(v) => v,
-            None => DEFAULT_PARAGRAPH_INDENT,
-        }
+    pub fn stored_indent(&self) -> Option<usize> {
+        self.stored_indent
     }
 
-    pub fn store_prev_indent(&mut self) {
-        self.prev_indent = Some(self.indent);
+    pub fn store_indent(&mut self) {
+        self.stored_indent = Some(self.indent);
     }
 
     pub fn margin(&self) -> usize {
@@ -183,7 +177,6 @@ impl TroffTermWriter {
     /// Set the indent to be used when adding lines
     /// (line breaks will also respect the indent)
     pub fn set_indent(&mut self, count: usize) {
-        self.prev_indent = Some(self.indent);
         self.indent = count;
     }
 
