@@ -2,8 +2,6 @@ extern crate term_size;
 use man_parse::font_style::{FontStyle, FontStyleState};
 use std::cmp;
 
-const DEFAULT_MARGIN_INCREASE: usize = 5;
-
 const DEFAULT_LINE_LENGTH: usize = 80;
 const RIGHT_MARGIN_LENGTH: usize = 8;
 const MIN_LINE_LENGTH: usize = 80;
@@ -75,10 +73,6 @@ impl TroffTermWriter {
         self.font_style = Default::default();
     }
 
-    pub fn indent(&self) -> usize {
-        self.indent
-    }
-
     /// Sets the indentation to 0.
     pub fn zero_indent(&mut self) {
         self.indent = 0;
@@ -92,21 +86,11 @@ impl TroffTermWriter {
         self.stored_indent = Some(self.indent);
     }
 
-    pub fn margin(&self) -> usize {
-        self.margin
-    }
-
     /// Increase the margin by some count of characters.
     /// The margin is how many chars from the left until the indent begins.
     pub fn increase_margin(&mut self, size: usize) {
         self.margin += size;
         self.margin_stack.push(size);
-    }
-
-    /// Increase the margin by some default amount.
-    /// Some Troff macros do not specify an increase count, so they use this.
-    pub fn increase_margin_default(&mut self) {
-        self.increase_margin(DEFAULT_MARGIN_INCREASE);
     }
 
     /// Pop away the last indent increase,

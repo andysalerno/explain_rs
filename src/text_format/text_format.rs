@@ -6,10 +6,10 @@ pub trait TextFormat {
 
 impl<'a> TextFormat for &'a str {
     fn bold(self) -> String {
-        const bold_tag: &str = "\x1b[1m";
-        const bold_tag_close: &str = "\x1b[0m";
+        const BOLD_TAG: &str = "\x1b[1m";
+        const BOLD_TAG_CLOSE: &str = "\x1b[0m";
 
-        format!("{}{}{}", bold_tag, self, bold_tag_close)
+        format!("{}{}{}", BOLD_TAG, self, BOLD_TAG_CLOSE)
     }
 
     fn italic(self) -> String {
@@ -22,9 +22,9 @@ impl<'a> TextFormat for &'a str {
     }
 
     fn underlined(self) -> String {
-        const underline_tag: &str = "\x1b[4m";
-        const underline_tag_close: &str = "\x1b[0m";
+        const UNDERLINE_TAG: &str = "\x1b[4m";
+        const UNDERLINE_TAG_CLOSE: &str = "\x1b[0m";
 
-        format!("{}{}{}", underline_tag, self, underline_tag_close)
+        format!("{}{}{}", UNDERLINE_TAG, self, UNDERLINE_TAG_CLOSE)
     }
 }

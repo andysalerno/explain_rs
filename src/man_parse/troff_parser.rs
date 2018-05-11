@@ -4,14 +4,11 @@ use man_parse::troff_term_writer::TroffTermWriter;
 use man_parse::troff_tokenize::TroffToken;
 use simple_parser::token::Token;
 use std;
-use text_format::text_format::TextFormat;
 
 const SPACE: &str = " ";
 
 // troff is inclusive with indent numbering, but I am not, so this is equal to a troff indent of 8
 const DEFAULT_PARAGRAPH_INDENT: usize = 7;
-const DEFAULT_TAG_INDENT: usize = 0;
-const DEFAULT_TERM_WIDTH: usize = 80;
 
 pub struct TroffParser<'a, I>
 where
@@ -197,23 +194,18 @@ where
     fn parse_tp(&mut self) {
         self.consume_val(".TP");
 
-        let cur_tok = if let Some(tok) = self.current_token() {
-            tok
-        } else {
-            return;
-        };
-
         // optional argument specifies indentation of paragraph text
-        let indent_arg = self.parse_macro_arg().next();
-        let paragraph_indent = if let Some(arg) = indent_arg {
-            arg.value.parse::<usize>().unwrap()
-        } else {
-            self.stored_or_default_paragraph_indent()
+        let paragraph_indent = {
+            let indent_arg = self.parse_macro_arg().next();
+            if indent_arg.is_some() {
+                indent_arg.unwrap().value.parse::<usize>().unwrap()
+            } else {
+                self.stored_or_default_paragraph_indent()
+            }
         };
 
-        // output the tag on a new line
-        let prev_indent = self.term_writer.indent();
-        self.term_writer.set_indent(DEFAULT_TAG_INDENT);
+        // output the tag flush-left on a new line
+        self.term_writer.zero_indent();
         self.add_linebreak();
         self.consume_spaces();
         self.parse_line();
