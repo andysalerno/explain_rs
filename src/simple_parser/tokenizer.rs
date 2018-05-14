@@ -31,7 +31,8 @@ pub fn tokenize<C: TokenClass>(input: &str, classifier: &TokenGenerator<C>) -> V
 
 #[cfg(test)]
 mod tests {
-    use simple_parser::token::{Token, TokenClass, TokenGenerator};
+    use simple_parser::token::{Token, TokenClass};
+    use simple_parser::token_generator::TokenGenerator;
     use simple_parser::tokenizer;
 
     #[derive(PartialEq, Debug)]
