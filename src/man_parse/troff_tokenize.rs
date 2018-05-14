@@ -1,6 +1,7 @@
 // implementing tokenization logic for a very small subset of Troff
 
-use simple_parser::token::{Token, TokenClass, TokenGenerator};
+use simple_parser::token::{Token, TokenClass};
+use simple_parser::token_generator::TokenGenerator;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum TroffToken {
@@ -127,7 +128,9 @@ impl TokenGenerator<TroffToken> for TroffClassifier {
     }
 
     fn is_comment(&self, word: &str) -> bool {
-        word.starts_with("\\\"") || word.starts_with(".\\\"") || word.starts_with("\\#")
+        word.starts_with("\\\"")
+            || word.starts_with(".\\\"")
+            || word.starts_with("\\#")
             || word == "."
     }
 }
