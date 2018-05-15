@@ -40,7 +40,6 @@ where
             tokens: Default::default(),
             current_token: Default::default(),
             current_section: Default::default(),
-            // section_text: Default::default(),
             before_section_text: Default::default(),
             parse_section: Default::default(),
             term_writer: TroffTermWriter::new(),
@@ -50,7 +49,6 @@ where
     /// TODO: idiomatically, this should take "self",
     /// and be invoked like "Parser::new().for_section(...)"
     pub fn for_section(section: ManSection) -> Self {
-        println!("creating parser for section: {:?}", section);
         let mut p = Self::new();
         p.parse_section = Some(section);
         p

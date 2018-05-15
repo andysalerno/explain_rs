@@ -4,7 +4,6 @@ mod simple_parser;
 mod text_format;
 
 use arg_parse::arg_parse::argparse;
-use man_parse::man_section::ManSection;
 use man_parse::troff_parser::TroffParser;
 use std::fs::File;
 use std::io::Read;
@@ -13,15 +12,11 @@ use std::process::Command;
 fn main() {
     let args = argparse();
 
-    let section = if args.explain_args.len() >= 2 {
-        // TODO: for now, I'm saying all explain args is -s...
-        Some(&args.explain_args[1])
-    } else {
-        None
-    };
-
     let man_path = get_manpage_path(&args.command_name);
-    println!("found manpath: [{}]", &man_path);
+
+    if args.debug {
+        println!("found manpath: [{}]", &man_path);
+    }
 
     let man_text = if is_gzipped(&man_path) {
         unzip(&man_path)
@@ -38,18 +33,19 @@ fn main() {
         }
     }
 
-    let mut parser = match section {
+    let mut parser = match args.section {
         None => TroffParser::new(),
-        Some(s) => TroffParser::for_section(ManSection::from(s.as_str())),
+        Some(s) => TroffParser::for_section(s),
     };
 
     parser.parse(tokenized.iter());
 
-    if section.is_some() {
-        println!("before:\n{}", parser.before_section_text());
+    if args.debug && args.section.is_some() {
+        println!("tokens:\n{}", parser.before_section_text());
         println!("-----------------");
-        println!("after:\n{}", parser.section_text());
     }
+
+    println!("{}", parser.section_text());
 }
 
 fn get_manpage_path(program_name: &str) -> String {
