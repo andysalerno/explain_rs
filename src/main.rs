@@ -1,21 +1,14 @@
-mod simple_parser;
+mod arg_parse;
 mod man_parse;
+mod simple_parser;
 mod text_format;
 
-use std::env;
+use arg_parse::arg_parse::argparse;
+use man_parse::man_section::ManSection;
+use man_parse::troff_parser::TroffParser;
 use std::fs::File;
 use std::io::Read;
 use std::process::Command;
-use man_parse::troff_parser::TroffParser;
-use man_parse::man_section::ManSection;
-
-struct ExplainArgs {
-    command_name: String,
-    command_args: Vec<String>,
-
-    explain_args: Vec<String>,
-    debug: bool,
-}
 
 fn main() {
     let args = argparse();
@@ -59,58 +52,6 @@ fn main() {
     }
 }
 
-fn argparse() -> ExplainArgs {
-    let args: Vec<String> = env::args().collect();
-
-    if args.len() < 2 {
-        print_usage();
-        panic!("improperly invoked");
-    }
-
-    // '--' is used to delim between args for this program,
-    // and the args to explain
-    let mut before_delim = true;
-
-    let mut result = ExplainArgs {
-        command_name: String::new(),
-        command_args: Vec::new(),
-        explain_args: Vec::new(),
-        debug: false,
-    };
-
-    for (i, arg) in args.iter().enumerate() {
-        // first arg is always the os-provided bin path
-        if i == 0 {
-            continue;
-        }
-
-        // second arg is always the requested bin to explain
-        if i == 1 {
-            result.command_name = arg.to_owned();
-        } else if before_delim {
-            if arg == "--" {
-                before_delim = false;
-                continue;
-            }
-
-            // everything before '--' is an arg to explain
-            result.command_args.push(arg.to_owned());
-        } else {
-            // everything after '--' is an arg to the 'explain' bin itself
-            result.explain_args.push(arg.to_owned());
-
-            match arg.as_str() {
-                "-d" => {
-                    result.debug = true;
-                }
-                _ => {}
-            }
-        }
-    }
-
-    result
-}
-
 fn get_manpage_path(program_name: &str) -> String {
     let output = Command::new("man")
         .arg("-w")
@@ -140,10 +81,6 @@ fn unzip(zip_path: &str) -> String {
 // fn is_troff(text: &str) -> bool {
 //     text.starts_with(".TH")
 // }
-
-fn print_usage() {
-    println!("Usage: TODO");
-}
 
 fn read_file_content(file_path: &str) -> String {
     let mut file = File::open(file_path).expect(&format!("path not found: {}", &file_path));
