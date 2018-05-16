@@ -24,6 +24,10 @@ fn main() {
         read_file_content(&man_path)
     };
 
+    // if !is_troff(&man_text) {
+    //     println!("Non-troff man content detected. Does this man page use mandoc instead?");
+    // }
+
     let classifier = man_parse::troff_tokenize::TroffClassifier {};
     let tokenized = simple_parser::tokenizer::tokenize(&man_text, &classifier);
 
@@ -74,9 +78,11 @@ fn unzip(zip_path: &str) -> String {
     format!("{}", String::from_utf8_lossy(&output.stdout))
 }
 
-// fn is_troff(text: &str) -> bool {
-//     text.starts_with(".TH")
-// }
+// by convention, man pages begin with ".TH"
+// (after comments, which we will presume to be preprocessed out)
+fn is_troff(text: &str) -> bool {
+    text.starts_with(".TH")
+}
 
 fn read_file_content(file_path: &str) -> String {
     let mut file = File::open(file_path).expect(&format!("path not found: {}", &file_path));

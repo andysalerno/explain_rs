@@ -39,7 +39,7 @@ pub struct TroffTermWriter {
     /// History of scoped indentations
     stored_indent: Option<usize>,
 
-    /// The distance from the left of the page where text can begi.
+    /// The distance from the left of the page where text can begin.
     /// AKA the "left margin" or "page offset" location
     margin: usize,
 

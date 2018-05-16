@@ -194,7 +194,7 @@ where
 
         // optional argument specifies indentation of paragraph text
         let paragraph_indent = {
-            let indent_arg = self.parse_macro_arg().next();
+            let indent_arg = self.parse_macro_arg().into_iter().next();
             if indent_arg.is_some() {
                 indent_arg.unwrap().value.parse::<usize>().unwrap()
             } else {
@@ -240,7 +240,7 @@ where
         self.consume_spaces();
 
         // next optional arg is the width to indent for the paragraph
-        let indent_tok = self.parse_macro_arg().next();
+        let indent_tok = self.parse_macro_arg().into_iter().next();
         let indent_count = if indent_tok.is_some() {
             let f_val = indent_tok.unwrap().value.parse::<f32>().unwrap();
             f_val as usize
@@ -270,7 +270,7 @@ where
         self.consume_val(".RS");
 
         let margin_increase = {
-            let indent_arg = self.parse_macro_arg().next();
+            let indent_arg = self.parse_macro_arg().into_iter().next();
 
             if indent_arg.is_some() {
                 indent_arg.unwrap().value.parse::<usize>().unwrap()
@@ -290,7 +290,7 @@ where
     fn parse_re(&mut self) {
         self.consume_val(".RE");
 
-        let decrease_arg = self.parse_macro_arg().next();
+        let decrease_arg = self.parse_macro_arg().into_iter().next();
 
         let pops = if decrease_arg.is_some() {
             decrease_arg.unwrap().value.parse::<usize>().unwrap()
@@ -312,10 +312,10 @@ where
     /// is to unify arguments under this
     /// since args may be contained in quotes
     /// TODO: can I return a single String, instead of a Vec?
-    fn parse_macro_arg(&mut self) -> std::vec::IntoIter<I::Item> {
+    fn parse_macro_arg(&mut self) -> Vec<I::Item> {
         self.consume_spaces();
 
-        let empty = Vec::new().into_iter();
+        let empty = Vec::new();
 
         if let Some(tok) = self.current_token() {
             // args are always on the same line
@@ -324,11 +324,11 @@ where
             }
 
             if tok.class == TroffToken::DoubleQuote {
-                return self.parse_within_quotes().into_iter();
+                return self.parse_within_quotes();
             } else {
                 let result = vec![tok];
                 self.consume();
-                return result.into_iter();
+                return result;
             }
         } else {
             return empty;
@@ -591,10 +591,9 @@ where
     }
 
     /// .SH SubheaderName
-    /// example: ".SH options"
-    /// This is not implemented correctly, as
-    /// you can use quotes to captures spaces and multiple words.
-    /// This currently only captures one word, and assumes doublequotes.
+    /// example: ".SH OPTIONS"
+    /// or
+    /// ".SH\nOPTIONS"
     fn parse_sh(&mut self) {
         self.consume_val(".SH");
 
@@ -605,13 +604,22 @@ where
             arg_str.push_str(&arg.value);
         }
 
-        self.current_section = match arg_str.as_str() {
-            "NAME" => Some(ManSection::Name),
-            "SYNOPSIS" => Some(ManSection::Synopsis),
-            "DESCRIPTION" => Some(ManSection::Description),
-            "OPTIONS" => Some(ManSection::Options),
-            _ => Some(ManSection::Unknown),
-        };
+        if self.parse_section.is_some() {
+            self.current_section = match arg_str.as_str() {
+                "NAME" => Some(ManSection::Name),
+                "SYNOPSIS" => Some(ManSection::Synopsis),
+                "DESCRIPTION" => Some(ManSection::Description),
+                "OPTIONS" => Some(ManSection::Options),
+                _ => Some(ManSection::Unknown),
+            };
+        } else {
+            self.term_writer.zero_indent();
+            self.add_blank_line();
+            self.term_writer.set_fontstyle(FontStyle::Bold);
+            self.add_to_output(&arg_str);
+            self.term_writer.reset_font_properties();
+            self.add_linebreak();
+        }
     }
 
     /// we aren't smart enough to evaluate expressions
@@ -695,7 +703,7 @@ where
     }
 
     fn section_matches(&self) -> bool {
-        self.parse_section.is_some() && self.parse_section == self.current_section
+        self.parse_section.is_none() || self.parse_section == self.current_section
     }
 
     fn add_blank_line(&mut self) {
