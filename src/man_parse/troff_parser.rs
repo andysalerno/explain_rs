@@ -238,16 +238,14 @@ where
 
         // next optional arg is the width to indent for the paragraph
         let indent_tok = self.parse_macro_arg().into_iter().next();
-        let indent_count = if indent_tok.is_some() {
+        if indent_tok.is_some() {
             let f_val = indent_tok.unwrap().value.parse::<f32>().unwrap();
-            f_val as usize
+            self.term_writer.set_indent(f_val as usize);
+            self.term_writer.store_indent();
         } else {
-            self.term_writer.stored_or_default_indent()
-        };
-
-        // set indent before printing paragraph
-        self.term_writer.set_indent(indent_count);
-        self.term_writer.store_indent();
+            let indent = self.term_writer.stored_or_default_indent();
+            self.term_writer.set_indent(indent);
+        }
 
         // start paragraph on newline
         self.add_linebreak();
@@ -610,16 +608,16 @@ where
                 _ => Some(ManSection::Unknown),
             };
         } else {
-            let prev_indent = self.term_writer.stored_or_default_indent();
-
             // output the subheader with zero indent in bold
+            self.term_writer.zero_margin();
             self.term_writer.zero_indent();
             self.add_blank_line();
             self.term_writer.set_fontstyle(FontStyle::Bold);
             self.add_to_output(&arg_str);
             self.term_writer.reset_font_properties();
 
-            self.term_writer.set_indent(prev_indent);
+            self.term_writer.default_margin();
+            self.term_writer.zero_indent();
             self.add_linebreak();
         }
     }

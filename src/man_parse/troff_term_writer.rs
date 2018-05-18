@@ -5,6 +5,8 @@ use std::cmp;
 const DEFAULT_LINE_LENGTH: usize = 80;
 const RIGHT_MARGIN_LENGTH: usize = 8;
 const MIN_LINE_LENGTH: usize = 80;
+
+const DEFAULT_LEFT_MARGIN: usize = 8;
 const DEFAULT_PARAGRAPH_INDENT: usize = 7;
 
 const LINEBREAK: &str = "\n";
@@ -64,10 +66,7 @@ pub struct TroffTermWriter {
 impl TroffTermWriter {
     pub fn new() -> Self {
         let mut tw: Self = Default::default();
-
         tw.line_length = term_width();
-        tw.default_indent();
-
         tw
     }
 
@@ -167,6 +166,8 @@ impl TroffTermWriter {
         self.indent = count;
     }
 
+    /// Sets the indent to the default paragraph indent.
+    /// For a non-paragraph, default is 0, so use zero_indent() in non-paragraph scenarios.
     pub fn default_indent(&mut self) {
         self.indent = DEFAULT_PARAGRAPH_INDENT;
     }
@@ -176,6 +177,19 @@ impl TroffTermWriter {
             Some(indent) => indent,
             None => DEFAULT_PARAGRAPH_INDENT,
         }
+    }
+
+    /// Resets the margin offset to 0,
+    /// and clears the stack of nested margins.
+    pub fn zero_margin(&mut self) {
+        self.margin = 0;
+        self.margin_stack = Vec::new();
+    }
+
+    /// Clears out the margin and sets its value back to default.
+    pub fn default_margin(&mut self) {
+        self.zero_margin();
+        self.increase_margin(DEFAULT_LEFT_MARGIN);
     }
 
     pub fn add_linebreak(&mut self) {
