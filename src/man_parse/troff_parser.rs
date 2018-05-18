@@ -7,9 +7,6 @@ use std;
 
 const SPACE: &str = " ";
 
-// troff is inclusive with indent numbering, but I am not, so this is equal to a troff indent of 8
-const DEFAULT_PARAGRAPH_INDENT: usize = 7;
-
 pub struct TroffParser<'a, I>
 where
     I: Iterator<Item = &'a Token<TroffToken>>,
@@ -198,7 +195,7 @@ where
             if indent_arg.is_some() {
                 indent_arg.unwrap().value.parse::<usize>().unwrap()
             } else {
-                self.stored_or_default_paragraph_indent()
+                self.term_writer.stored_or_default_indent()
             }
         };
 
@@ -245,7 +242,7 @@ where
             let f_val = indent_tok.unwrap().value.parse::<f32>().unwrap();
             f_val as usize
         } else {
-            self.stored_or_default_paragraph_indent()
+            self.term_writer.stored_or_default_indent()
         };
 
         // set indent before printing paragraph
@@ -275,14 +272,14 @@ where
             if indent_arg.is_some() {
                 indent_arg.unwrap().value.parse::<usize>().unwrap()
             } else {
-                self.stored_or_default_paragraph_indent()
+                self.term_writer.stored_or_default_indent()
             }
         };
 
         self.term_writer.increase_margin(margin_increase);
 
         // indent value is then reset to default
-        self.term_writer.set_indent(DEFAULT_PARAGRAPH_INDENT);
+        self.term_writer.default_indent();
         self.add_linebreak();
     }
 
@@ -303,7 +300,7 @@ where
             self.term_writer.pop_margin();
         }
 
-        self.term_writer.set_indent(DEFAULT_PARAGRAPH_INDENT);
+        self.term_writer.default_indent();
         self.term_writer.store_indent();
     }
 
@@ -613,11 +610,16 @@ where
                 _ => Some(ManSection::Unknown),
             };
         } else {
+            let prev_indent = self.term_writer.stored_or_default_indent();
+
+            // output the subheader with zero indent in bold
             self.term_writer.zero_indent();
             self.add_blank_line();
             self.term_writer.set_fontstyle(FontStyle::Bold);
             self.add_to_output(&arg_str);
             self.term_writer.reset_font_properties();
+
+            self.term_writer.set_indent(prev_indent);
             self.add_linebreak();
         }
     }
@@ -727,13 +729,6 @@ where
     fn add_to_before_output(&mut self, s: &str) {
         if self.section_matches() {
             self.before_section_text.push_str(s);
-        }
-    }
-
-    fn stored_or_default_paragraph_indent(&self) -> usize {
-        match self.term_writer.stored_indent() {
-            Some(indent) => indent,
-            None => DEFAULT_PARAGRAPH_INDENT,
         }
     }
 }

@@ -5,6 +5,7 @@ use std::cmp;
 const DEFAULT_LINE_LENGTH: usize = 80;
 const RIGHT_MARGIN_LENGTH: usize = 8;
 const MIN_LINE_LENGTH: usize = 80;
+const DEFAULT_PARAGRAPH_INDENT: usize = 7;
 
 const LINEBREAK: &str = "\n";
 const SPACE: &str = " ";
@@ -63,7 +64,9 @@ pub struct TroffTermWriter {
 impl TroffTermWriter {
     pub fn new() -> Self {
         let mut tw: Self = Default::default();
+
         tw.line_length = term_width();
+        tw.default_indent();
 
         tw
     }
@@ -162,6 +165,17 @@ impl TroffTermWriter {
     /// (line breaks will also respect the indent)
     pub fn set_indent(&mut self, count: usize) {
         self.indent = count;
+    }
+
+    pub fn default_indent(&mut self) {
+        self.indent = DEFAULT_PARAGRAPH_INDENT;
+    }
+
+    pub fn stored_or_default_indent(&self) -> usize {
+        match self.stored_indent() {
+            Some(indent) => indent,
+            None => DEFAULT_PARAGRAPH_INDENT,
+        }
     }
 
     pub fn add_linebreak(&mut self) {
