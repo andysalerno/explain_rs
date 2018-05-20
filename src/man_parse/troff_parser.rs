@@ -74,6 +74,8 @@ where
         }
 
         if tok.class == TroffToken::Macro {
+            // TODO: parse_line already handles parse_macro,
+            // so maybe this distinction isn't necessary
             self.parse_macro();
         } else {
             self.parse_line();
@@ -101,6 +103,7 @@ where
                 ".if" => self.parse_if(),
                 ".PP" | ".LP" | ".P" => self.parse_p(),
                 _ => {
+                    // TODO: remove this, uneeded
                     self.add_to_before_output(&format!(
                         "[skipping unknown macro: {:?}]",
                         tok.value
@@ -431,12 +434,10 @@ where
             }
 
             if bold {
-                println!("bold: {:?}", tok);
                 self.term_writer.set_fontstyle(FontStyle::Bold);
                 self.parse_word();
                 self.term_writer.unset_fontstyle(FontStyle::Bold);
             } else {
-                println!("underlined: {:?}", tok);
                 self.term_writer.set_fontstyle(FontStyle::Underlined);
                 self.parse_word();
                 self.term_writer.unset_fontstyle(FontStyle::Underlined);
@@ -446,6 +447,9 @@ where
 
     fn parse_textword(&mut self) {
         let cur_tok = self.current_token().unwrap();
+        if cur_tok.starts_line {
+            self.add_to_output(SPACE);
+        }
         self.add_to_output(&cur_tok.value);
         self.consume();
     }
@@ -479,6 +483,8 @@ where
     /// A more complicated example is '\fBHello', which
     /// prints 'Hello' in bold.
     fn parse_backslash(&mut self) {
+        let backslash_starts_line = self.current_token().unwrap().starts_line;
+
         self.consume_val("\\");
 
         if let Some(tok) = self.current_token() {
