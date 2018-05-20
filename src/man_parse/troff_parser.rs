@@ -9,6 +9,8 @@ const SPACE: &str = " ";
 
 pub struct TroffParser<'a, I>
 where
+    // TODO: I shouldn't be the iterator, it should be a trait,
+    // and Token should be a trait, not a class (I think)
     I: Iterator<Item = &'a Token<TroffToken>>,
 {
     tokens: Option<I>,
@@ -447,11 +449,14 @@ where
 
     fn parse_textword(&mut self) {
         let cur_tok = self.current_token().unwrap();
-        if cur_tok.starts_line {
-            self.add_to_output(SPACE);
-        }
         self.add_to_output(&cur_tok.value);
         self.consume();
+
+        if let Some(next_tok) = self.current_token() {
+            if next_tok.class == TroffToken::TextWord {
+                self.add_to_output(SPACE);
+            }
+        }
     }
 
     fn parse_space(&mut self) {
