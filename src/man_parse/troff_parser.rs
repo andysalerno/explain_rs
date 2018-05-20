@@ -362,23 +362,22 @@ where
     /// or the very next line if there are no same-line values.
     fn parse_b(&mut self) {
         self.consume_class(TroffToken::Macro);
-        self.term_writer.set_fontstyle(FontStyle::Bold);
-
-        self.consume_spaces();
-        self.parse_line();
-
-        self.term_writer.unset_fontstyle(FontStyle::Bold);
-
-        self.add_to_output(SPACE);
+        self.parse_line_with_style(FontStyle::Bold);
     }
 
     /// Sets the rest of the line to bold,
     /// or the very next line if there are no same-line values.
     fn parse_i(&mut self) {
         self.consume_class(TroffToken::Macro);
-        self.term_writer.set_fontstyle(FontStyle::Italic);
+        self.parse_line_with_style(FontStyle::Italic);
+    }
+
+    fn parse_line_with_style(&mut self, style: FontStyle) {
+        self.term_writer.set_fontstyle(style);
+        self.consume_spaces();
         self.parse_line();
-        self.term_writer.unset_fontstyle(FontStyle::Italic)
+        self.term_writer.unset_fontstyle(style);
+        self.add_to_output(SPACE);
     }
 
     /// Alternates between italic and regular.

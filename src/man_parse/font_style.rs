@@ -9,6 +9,7 @@ pub struct FontStyleState {
     underlined: bool,
 }
 
+#[derive(Copy, Clone)]
 pub enum FontStyle {
     Bold,
     Italic,
