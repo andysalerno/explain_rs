@@ -28,7 +28,7 @@ fn main() {
     //     println!("Non-troff man content detected. Does this man page use mandoc instead?");
     // }
 
-    let classifier = man_parse::troff_tokenize::TroffClassifier {};
+    let classifier = man_parse::troff_token_generator::TroffTokenGenerator {};
     let tokenized = simple_parser::tokenizer::tokenize(&man_text, &classifier);
 
     if args.debug {

@@ -1,13 +1,16 @@
 use simple_parser::token::{Token, TokenClass};
 use simple_parser::token_generator::TokenGenerator;
 
+const SPACE: &str = " ";
+const EMPTY: &str = "";
+
 pub fn tokenize<C: TokenClass>(input: &str, classifier: &TokenGenerator<C>) -> Vec<Token<C>> {
     let mut result = Vec::new();
 
     for line in input.lines() {
         // special case where the line is a totally blank line
         if line.len() == 0 {
-            let mut tokens = classifier.generate("", true);
+            let mut tokens = classifier.generate(EMPTY, true);
             result.append(&mut tokens);
             continue;
         }
@@ -23,6 +26,10 @@ pub fn tokenize<C: TokenClass>(input: &str, classifier: &TokenGenerator<C>) -> V
             let mut tokens = classifier.generate(&word, starts_line);
 
             result.append(&mut tokens);
+
+            if let Some(space_tok) = classifier.space_tok() {
+                result.push(space_tok);
+            }
         }
     }
 
@@ -41,6 +48,7 @@ mod tests {
         RParen,
         NumVal(i32),
         AddOp,
+        Space,
     }
 
     impl TokenClass for TestToken {}
@@ -66,6 +74,10 @@ mod tests {
 
         fn is_comment(&self, word: &str) -> bool {
             false
+        }
+
+        fn space_tok(&self) -> Option<Token<TestToken>> {
+            Some(Token::new(TestToken::Space, " ".to_owned(), false))
         }
     }
 
