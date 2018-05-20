@@ -491,7 +491,12 @@ where
             match tok.value.as_str() {
                 "-" => self.parse_hyphen(),
                 "(" => self.parse_special_character(),
-                "f" => self.parse_font_format(),
+                "f" => {
+                    if backslash_starts_line {
+                        self.add_to_output(SPACE);
+                    }
+                    self.parse_font_format();
+                }
                 "m" => self.parse_color_format(),
                 _ => self.consume(),
             }

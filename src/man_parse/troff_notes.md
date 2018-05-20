@@ -29,3 +29,25 @@ Initial Value: -
 Break: yes
 
 Reset: yes 
+
+### Spacing and line breaks
+Textwords that begin on a newline and were preceded by other textwords are preceded with a space. E.g.,
+
+<start>Hello, Clifford the big
+red dog.<end>
+
+Outputs "Hello, Clifford the big red dog."
+
+However, textwords that begin on a newline and were preceded by an empty line do not get a space. E.g.,
+
+<start>Hello, today is Saturday.
+
+But I prefer Friday.<end>
+
+Outputs 
+
+"Hello, today is saturday.
+
+But I prefer Friday."
+
+This can get tricky when the preceding word was modified by a macro.
