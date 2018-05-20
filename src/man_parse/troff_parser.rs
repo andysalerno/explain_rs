@@ -364,9 +364,12 @@ where
         self.consume_class(TroffToken::Macro);
         self.term_writer.set_fontstyle(FontStyle::Bold);
 
+        self.consume_spaces();
         self.parse_line();
 
         self.term_writer.unset_fontstyle(FontStyle::Bold);
+
+        self.add_to_output(SPACE);
     }
 
     /// Sets the rest of the line to bold,
@@ -593,6 +596,7 @@ where
         self.consume_val(".SH");
 
         let sh_args = self.parse_macro_arg();
+
         let mut arg_str = String::new();
 
         for arg in sh_args {

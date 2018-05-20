@@ -15,20 +15,23 @@ pub fn tokenize<C: TokenClass>(input: &str, classifier: &TokenGenerator<C>) -> V
             continue;
         }
 
-        for (i, word) in line.split_whitespace().enumerate() {
+        let mut word_iter = line.split_whitespace().enumerate().peekable();
+        while let Some((i, word)) = word_iter.next() {
             let starts_line = i == 0;
 
             if starts_line && classifier.is_comment(&word) {
                 break;
             }
 
-            // a whitespace-delimited word might generate multiple tokens
+            // a single word might generate multiple tokens
             let mut tokens = classifier.generate(&word, starts_line);
 
             result.append(&mut tokens);
 
-            if let Some(space_tok) = classifier.space_tok() {
-                result.push(space_tok);
+            if word_iter.peek().is_some() {
+                if let Some(space_tok) = classifier.space_tok() {
+                    result.push(space_tok);
+                }
             }
         }
     }
