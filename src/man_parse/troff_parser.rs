@@ -143,7 +143,7 @@ where
             TroffToken::Macro => self.parse_macro(),
             TroffToken::EmptyLine => self.parse_empty_line(),
             TroffToken::Backslash => self.parse_backslash(),
-            TroffToken::Space => self.parse_space(),
+            TroffToken::Whitespace => self.parse_space(),
             TroffToken::DoubleQuote => self.parse_doublequote(),
             _ => self.parse_textword(),
         }
@@ -352,7 +352,7 @@ where
             if tok.class == TroffToken::DoubleQuote {
                 self.consume_class(TroffToken::DoubleQuote);
                 return result;
-            } else if tok.class != TroffToken::Space {
+            } else if tok.class != TroffToken::Whitespace {
                 result.push(tok);
             }
 
@@ -394,7 +394,7 @@ where
             if tok.starts_line {
                 break;
             }
-            if tok.class == TroffToken::Space {
+            if tok.class == TroffToken::Whitespace {
                 self.parse_textword();
                 continue;
             }
@@ -423,7 +423,7 @@ where
             if tok.starts_line {
                 break;
             }
-            if tok.class == TroffToken::Space {
+            if tok.class == TroffToken::Whitespace {
                 self.parse_textword();
                 if !in_quote {
                     bold = !bold;
@@ -658,7 +658,7 @@ where
 
     fn format_token(token: I::Item) -> String {
         let val = match token.class {
-            TroffToken::Space => " ",
+            TroffToken::Whitespace => " ",
             TroffToken::EmptyLine => "[el]",
             _ => &token.value,
         };
@@ -694,7 +694,7 @@ where
 
     fn consume_spaces(&mut self) {
         while let Some(tok) = self.current_token() {
-            if tok.class != TroffToken::Space {
+            if tok.class != TroffToken::Whitespace {
                 break;
             }
 

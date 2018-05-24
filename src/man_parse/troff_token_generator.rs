@@ -5,7 +5,7 @@ use simple_parser::token_generator::TokenGenerator;
 
 #[derive(Debug, PartialEq, Copy, Clone)]
 pub enum TroffToken {
-    Space,
+    Whitespace,
     Macro,
     TextWord,
     DoubleQuote,
@@ -36,6 +36,14 @@ pub struct TroffTokenGenerator;
 impl TokenGenerator<TroffToken> for TroffTokenGenerator {
     fn generate(&self, word: &str, starts_line: bool) -> Vec<Token<TroffToken>> {
         let mut tokens = Vec::new(); // TODO: preallocate a smart amount
+
+        if word.len() == 0 {
+            return tokens;
+        } else if word.chars().next().unwrap().is_whitespace() {
+            let tok = Token::new(TroffToken::Whitespace, word.to_owned(), starts_line);
+            tokens.push(tok);
+            return tokens;
+        }
 
         if starts_line && word.starts_with('.') {
             let tok = Token::new(TroffToken::Macro, word.to_owned(), true);
@@ -126,14 +134,8 @@ impl TokenGenerator<TroffToken> for TroffTokenGenerator {
     }
 
     fn is_comment(&self, word: &str) -> bool {
-        word.starts_with("\\\"")
-            || word.starts_with(".\\\"")
-            || word.starts_with("\\#")
+        word.starts_with("\\\"") || word.starts_with(".\\\"") || word.starts_with("\\#")
             || word == "."
-    }
-
-    fn space_tok(&self) -> Option<Token<TroffToken>> {
-        Some(Token::new(TroffToken::Space, SPACE.to_owned(), false))
     }
 }
 

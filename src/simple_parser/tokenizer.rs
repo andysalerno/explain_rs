@@ -1,5 +1,6 @@
 use simple_parser::token::{Token, TokenClass};
 use simple_parser::token_generator::TokenGenerator;
+use simple_parser::token_splitter::WhitespaceSplitInclusive;
 
 const EMPTY: &str = "";
 
@@ -14,7 +15,7 @@ pub fn tokenize<C: TokenClass>(input: &str, classifier: &TokenGenerator<C>) -> V
             continue;
         }
 
-        let mut word_iter = line.split_whitespace().enumerate().peekable();
+        let mut word_iter = line.split_whitespace_inclusive().enumerate();
         while let Some((i, word)) = word_iter.next() {
             let starts_line = i == 0;
 
@@ -26,12 +27,6 @@ pub fn tokenize<C: TokenClass>(input: &str, classifier: &TokenGenerator<C>) -> V
             let mut tokens = classifier.generate(&word, starts_line);
 
             result.append(&mut tokens);
-
-            if word_iter.peek().is_some() {
-                if let Some(space_tok) = classifier.space_tok() {
-                    result.push(space_tok);
-                }
-            }
         }
     }
 
@@ -65,11 +60,13 @@ mod tests {
                 "(" => return vec![Token::new(TestToken::LParen, "(".into(), starts_line)],
                 ")" => return vec![Token::new(TestToken::RParen, ")".into(), starts_line)],
                 "+" => return vec![Token::new(TestToken::AddOp, "+".into(), starts_line)],
-                w if w.parse::<i32>().is_ok() => vec![Token::new(
-                    TestToken::NumVal(w.parse::<i32>().unwrap()),
-                    w.into(),
-                    starts_line,
-                )],
+                w if w.parse::<i32>().is_ok() => vec![
+                    Token::new(
+                        TestToken::NumVal(w.parse::<i32>().unwrap()),
+                        w.into(),
+                        starts_line,
+                    ),
+                ],
                 &_ => panic!(format!("found an illeTokenClassal character: {}", word)),
             }
         }
