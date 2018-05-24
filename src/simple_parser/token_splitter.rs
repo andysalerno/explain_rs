@@ -91,4 +91,19 @@ mod tests {
 
         assert_eq!(result, expected);
     }
+
+    #[test]
+    fn split_understands_newlines() {
+        let my_str = "Hello,\nthis is my\n string!";
+
+        let tok_iter = TokenSplitter::new(my_str);
+
+        let result: Vec<&str> = tok_iter.collect();
+
+        let expected = vec![
+            "Hello,", "\n", "this", " ", "is", " ", "my", "\n ", "string!"
+        ];
+
+        assert_eq!(result, expected);
+    }
 }
