@@ -1,7 +1,6 @@
 use simple_parser::token::{Token, TokenClass};
 use simple_parser::token_generator::TokenGenerator;
 
-const SPACE: &str = " ";
 const EMPTY: &str = "";
 
 pub fn tokenize<C: TokenClass>(input: &str, classifier: &TokenGenerator<C>) -> Vec<Token<C>> {

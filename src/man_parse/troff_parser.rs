@@ -3,7 +3,6 @@ use man_parse::man_section::ManSection;
 use man_parse::troff_term_writer::TroffTermWriter;
 use man_parse::troff_token_generator::TroffToken;
 use simple_parser::token::Token;
-use std;
 
 const SPACE: &str = " ";
 
@@ -71,7 +70,7 @@ where
             return;
         };
 
-        if self.term_writer.is_nofill() && tok.starts_line {
+        if self.term_writer.is_nofill() && tok.class == TroffToken::TextWord && tok.starts_line {
             self.add_linebreak();
         }
 
@@ -243,8 +242,8 @@ where
 
         // next optional arg is the width to indent for the paragraph
         let indent_tok = self.parse_macro_arg().into_iter().next();
-        if indent_tok.is_some() {
-            let f_val = indent_tok.unwrap().value.parse::<f32>().unwrap();
+        if let Some(tok) = indent_tok {
+            let f_val = tok.value.parse::<f32>().unwrap_or(0f32);
             self.term_writer.set_indent(f_val as usize);
             self.term_writer.store_indent();
         } else {
@@ -467,7 +466,7 @@ where
     /// Begin no-fill mode, and add a linebreak.
     fn parse_nf(&mut self) {
         self.consume();
-        self.add_linebreak();
+        //self.add_linebreak();
         self.term_writer.enable_nofill();
     }
 
@@ -577,24 +576,18 @@ where
 
     /// .sp [LineCount]
     /// Adds some amount of spacing lines,
-    /// defaulting to two if no arguments
+    /// either from an optional argument or a default amount.
     fn parse_sp(&mut self) {
         self.consume_val(".sp");
 
         let mut linebreaks = 2;
 
-        if let Some(tok) = self.current_token() {
-            if !tok.starts_line {
-                // there's an argument to .sp
-                if let Ok(parsed) = tok.value.parse::<i32>() {
-                    if parsed > 0 {
-                        linebreaks += parsed;
-                    } else {
-                        println!("warning: parsed .sp value < 0, of {}", parsed);
-                    }
+        let arg = self.parse_macro_arg();
+        if arg.len() > 0 {
+            if let Ok(parsed) = arg[0].value.parse::<i32>() {
+                if parsed > 0 {
+                    linebreaks = parsed;
                 }
-
-                self.consume();
             }
         }
 

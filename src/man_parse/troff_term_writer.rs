@@ -6,7 +6,7 @@ const DEFAULT_LINE_LENGTH: usize = 80;
 const RIGHT_MARGIN_LENGTH: usize = 8;
 const MIN_LINE_LENGTH: usize = 80;
 
-const DEFAULT_LEFT_MARGIN: usize = 8;
+const DEFAULT_LEFT_MARGIN: usize = 7;
 const DEFAULT_PARAGRAPH_INDENT: usize = 7;
 
 const LINEBREAK: &str = "\n";

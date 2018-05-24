@@ -80,9 +80,9 @@ fn unzip(zip_path: &str) -> String {
 
 // by convention, man pages begin with ".TH"
 // (after comments, which we will presume to be preprocessed out)
-fn is_troff(text: &str) -> bool {
-    text.starts_with(".TH")
-}
+// fn is_troff(text: &str) -> bool {
+//     text.starts_with(".TH")
+// }
 
 fn read_file_content(file_path: &str) -> String {
     let mut file = File::open(file_path).expect(&format!("path not found: {}", &file_path));
