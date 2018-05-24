@@ -29,7 +29,7 @@ pub enum TroffToken {
 // Flag our TroffToken class with unit trait to prove it is a Token
 impl TokenClass for TroffToken {}
 
-const SPACE: &str = " ";
+const EMPTY: &str = "";
 
 pub struct TroffTokenGenerator;
 
@@ -38,6 +38,9 @@ impl TokenGenerator<TroffToken> for TroffTokenGenerator {
         let mut tokens = Vec::new(); // TODO: preallocate a smart amount
 
         if word.len() == 0 {
+            if starts_line {
+                tokens.push(Token::new(TroffToken::EmptyLine, EMPTY.into(), true));
+            }
             return tokens;
         } else if word.chars().next().unwrap().is_whitespace() {
             let tok = Token::new(TroffToken::Whitespace, word.to_owned(), starts_line);
@@ -48,12 +51,6 @@ impl TokenGenerator<TroffToken> for TroffTokenGenerator {
         if starts_line && word.starts_with('.') {
             let tok = Token::new(TroffToken::Macro, word.to_owned(), true);
             tokens.push(tok);
-            return tokens;
-        }
-
-        if starts_line && word.len() == 0 {
-            let empty_line = Token::new(TroffToken::EmptyLine, "".into(), true);
-            tokens.push(empty_line);
             return tokens;
         }
 
