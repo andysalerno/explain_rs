@@ -1,9 +1,19 @@
-pub struct TokenSplitter<'a> {
+pub trait WhitespaceSplitInclusive {
+    fn split_whitespace_inclusive(&self) -> SplitWhitespaceInclusive;
+}
+
+impl WhitespaceSplitInclusive for str {
+    fn split_whitespace_inclusive(&self) -> SplitWhitespaceInclusive {
+        SplitWhitespaceInclusive::new(self)
+    }
+}
+
+pub struct SplitWhitespaceInclusive<'a> {
     content: &'a str,
     cur_idx: usize,
 }
 
-impl<'a> Iterator for TokenSplitter<'a> {
+impl<'a> Iterator for SplitWhitespaceInclusive<'a> {
     type Item = &'a str;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -42,9 +52,9 @@ impl<'a> Iterator for TokenSplitter<'a> {
     }
 }
 
-impl<'a> TokenSplitter<'a> {
+impl<'a> SplitWhitespaceInclusive<'a> {
     fn new(content: &'a str) -> Self {
-        TokenSplitter {
+        SplitWhitespaceInclusive {
             content,
             cur_idx: 0,
         }
@@ -59,7 +69,7 @@ mod tests {
     fn split_includes_whitespace() {
         let my_str = "Hello, this is my string!";
 
-        let result: Vec<&str> = TokenSplitter::new(my_str).collect();
+        let result: Vec<&str> = SplitWhitespaceInclusive::new(my_str).collect();
 
         let expected = vec!["Hello,", " ", "this", " ", "is", " ", "my", " ", "string!"];
 
@@ -70,7 +80,7 @@ mod tests {
     fn split_keeps_multilength_spaces() {
         let my_str = "Hello,   this is my    string!";
 
-        let result: Vec<&str> = TokenSplitter::new(my_str).collect();
+        let result: Vec<&str> = SplitWhitespaceInclusive::new(my_str).collect();
 
         let expected = vec![
             "Hello,", "   ", "this", " ", "is", " ", "my", "    ", "string!"
@@ -83,7 +93,7 @@ mod tests {
     fn split_understands_tabs() {
         let my_str = "Hello,\tthis is my string!";
 
-        let result: Vec<&str> = TokenSplitter::new(my_str).collect();
+        let result: Vec<&str> = SplitWhitespaceInclusive::new(my_str).collect();
 
         let expected = vec!["Hello,", "\t", "this", " ", "is", " ", "my", " ", "string!"];
 
@@ -94,7 +104,7 @@ mod tests {
     fn split_understands_newlines() {
         let my_str = "Hello,\nthis is my\n string!";
 
-        let result: Vec<&str> = TokenSplitter::new(my_str).collect();
+        let result: Vec<&str> = SplitWhitespaceInclusive::new(my_str).collect();
 
         let expected = vec![
             "Hello,", "\n", "this", " ", "is", " ", "my", "\n", " ", "string!"
@@ -103,13 +113,39 @@ mod tests {
         assert_eq!(result, expected);
     }
 
+    #[test]
     fn split_segregates_whitespaces_types() {
         let my_str = "Hello,\t  \t my whitespace is  \nnon-homogenous!";
 
-        let result: Vec<&str> = TokenSplitter::new(my_str).collect();
+        let result: Vec<&str> = SplitWhitespaceInclusive::new(my_str).collect();
 
         let expected = vec![
-            "Hello,", "\n", "this", " ", "is", " ", "my", "\n", " ", "string!"
+            "Hello,",
+            "\t",
+            "  ",
+            "\t",
+            " ",
+            "my",
+            " ",
+            "whitespace",
+            " ",
+            "is",
+            "  ",
+            "\n",
+            "non-homogenous!",
+        ];
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn trait_works() {
+        let my_str = "This is a test of the trait!";
+        let iterator = my_str.split_whitespace_inclusive();
+        let result: Vec<&str> = iterator.collect();
+
+        let expected = vec![
+            "This", " ", "is", " ", "a", " ", "test", " ", "of", " ", "the", " ", "trait!"
         ];
 
         assert_eq!(result, expected);
