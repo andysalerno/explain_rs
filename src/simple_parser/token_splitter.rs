@@ -15,15 +15,19 @@ impl<'a> Iterator for TokenSplitter<'a> {
         let mut result_end = result_start + 1;
 
         let mut whitespace_mode = false;
+        let mut whitespace_char = '\0';
 
         for (index, c) in self.content[result_start..].chars().enumerate() {
             if index == 0 {
-                whitespace_mode = c.is_whitespace();
+                if c.is_whitespace() {
+                    whitespace_mode = true;
+                    whitespace_char = c;
+                }
                 continue;
             }
 
-            let found_continuation =
-                (c.is_whitespace() && whitespace_mode) || (!c.is_whitespace() && !whitespace_mode);
+            let found_continuation = (c.is_whitespace() && whitespace_mode && c == whitespace_char)
+                || (!c.is_whitespace() && !whitespace_mode);
 
             if found_continuation {
                 result_end = result_start + index + 1;
@@ -55,9 +59,7 @@ mod tests {
     fn split_includes_whitespace() {
         let my_str = "Hello, this is my string!";
 
-        let tok_iter = TokenSplitter::new(my_str);
-
-        let result: Vec<&str> = tok_iter.collect();
+        let result: Vec<&str> = TokenSplitter::new(my_str).collect();
 
         let expected = vec!["Hello,", " ", "this", " ", "is", " ", "my", " ", "string!"];
 
@@ -68,9 +70,7 @@ mod tests {
     fn split_keeps_multilength_spaces() {
         let my_str = "Hello,   this is my    string!";
 
-        let tok_iter = TokenSplitter::new(my_str);
-
-        let result: Vec<&str> = tok_iter.collect();
+        let result: Vec<&str> = TokenSplitter::new(my_str).collect();
 
         let expected = vec![
             "Hello,", "   ", "this", " ", "is", " ", "my", "    ", "string!"
@@ -83,9 +83,7 @@ mod tests {
     fn split_understands_tabs() {
         let my_str = "Hello,\tthis is my string!";
 
-        let tok_iter = TokenSplitter::new(my_str);
-
-        let result: Vec<&str> = tok_iter.collect();
+        let result: Vec<&str> = TokenSplitter::new(my_str).collect();
 
         let expected = vec!["Hello,", "\t", "this", " ", "is", " ", "my", " ", "string!"];
 
@@ -96,12 +94,22 @@ mod tests {
     fn split_understands_newlines() {
         let my_str = "Hello,\nthis is my\n string!";
 
-        let tok_iter = TokenSplitter::new(my_str);
-
-        let result: Vec<&str> = tok_iter.collect();
+        let result: Vec<&str> = TokenSplitter::new(my_str).collect();
 
         let expected = vec![
-            "Hello,", "\n", "this", " ", "is", " ", "my", "\n ", "string!"
+            "Hello,", "\n", "this", " ", "is", " ", "my", "\n", " ", "string!"
+        ];
+
+        assert_eq!(result, expected);
+    }
+
+    fn split_segregates_whitespaces_types() {
+        let my_str = "Hello,\t  \t my whitespace is  \nnon-homogenous!";
+
+        let result: Vec<&str> = TokenSplitter::new(my_str).collect();
+
+        let expected = vec![
+            "Hello,", "\n", "this", " ", "is", " ", "my", "\n", " ", "string!"
         ];
 
         assert_eq!(result, expected);
