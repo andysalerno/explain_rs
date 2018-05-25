@@ -143,7 +143,7 @@ where
             TroffToken::Macro => self.parse_macro(),
             TroffToken::EmptyLine => self.parse_empty_line(),
             TroffToken::Backslash => self.parse_backslash(),
-            TroffToken::Whitespace => self.parse_space(),
+            TroffToken::Whitespace => self.parse_whitespace(),
             TroffToken::DoubleQuote => self.parse_doublequote(),
             _ => self.parse_textword(),
         }
@@ -338,7 +338,6 @@ where
     /// return a vector of every token between
     /// this doublequote and an ending doublequote on the same line.
     /// (returns early if a newline is encountered before a closing doublequote)
-    /// (does not include tokens that are Spaces)
     fn parse_within_quotes(&mut self) -> Vec<I::Item> {
         self.consume_class(TroffToken::DoubleQuote);
 
@@ -352,7 +351,7 @@ where
             if tok.class == TroffToken::DoubleQuote {
                 self.consume_class(TroffToken::DoubleQuote);
                 return result;
-            } else if tok.class != TroffToken::Whitespace {
+            } else {
                 result.push(tok);
             }
 
@@ -451,16 +450,18 @@ where
         self.add_to_output(&cur_tok.value);
         self.consume();
 
-        if let Some(next_tok) = self.current_token() {
-            if next_tok.class == TroffToken::TextWord {
-                self.add_to_output(SPACE);
-            }
-        }
+        // if let Some(next_tok) = self.current_token() {
+        //     if next_tok.class != TroffToken::Whitespace {
+        //         self.add_to_output(SPACE);
+        //     }
+        // }
     }
 
-    fn parse_space(&mut self) {
+    fn parse_whitespace(&mut self) {
+        let space_tok = self.current_token().unwrap();
+        self.add_to_output(&space_tok.value);
+
         self.consume();
-        self.add_to_output(SPACE);
     }
 
     /// Begin no-fill mode, and add a linebreak.
@@ -499,7 +500,14 @@ where
                     if backslash_starts_line {
                         self.add_to_output(SPACE);
                     }
+
                     self.parse_font_format();
+
+                    if let Some(next_tok) = self.current_token() {
+                        if next_tok.starts_line {
+                            self.add_to_output(SPACE);
+                        }
+                    }
                 }
                 "m" => self.parse_color_format(),
                 _ => self.consume(),
