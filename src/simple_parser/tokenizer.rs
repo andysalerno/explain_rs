@@ -1,6 +1,6 @@
+use simple_parser::split_whitespace::WhitespaceSplitInclusive;
 use simple_parser::token::{Token, TokenClass};
 use simple_parser::token_generator::TokenGenerator;
-use simple_parser::token_splitter::WhitespaceSplitInclusive;
 
 const EMPTY: &str = "";
 
