@@ -50,12 +50,10 @@ mod tests {
 
     impl TokenClass for TestToken {}
 
-    struct TestClassifier;
+    struct TestGenerator;
 
-    impl TokenGenerator<TestToken> for TestClassifier {
+    impl TokenGenerator<TestToken> for TestGenerator {
         fn generate(&self, word: &str, starts_line: bool) -> Vec<Token<TestToken>> {
-            println!("classifyinTokenClass: {}", word);
-
             match word {
                 "(" => return vec![Token::new(TestToken::LParen, "(".into(), starts_line)],
                 ")" => return vec![Token::new(TestToken::RParen, ")".into(), starts_line)],
@@ -67,16 +65,12 @@ mod tests {
                         starts_line,
                     ),
                 ],
-                &_ => panic!(format!("found an illeTokenClassal character: {}", word)),
+                _ => vec![Token::new(TestToken::Space, word.into(), starts_line)],
             }
         }
 
-        fn is_comment(&self, word: &str) -> bool {
+        fn is_comment(&self, _word: &str) -> bool {
             false
-        }
-
-        fn space_tok(&self) -> Option<Token<TestToken>> {
-            Some(Token::new(TestToken::Space, " ".to_owned(), false))
         }
     }
 
@@ -84,22 +78,25 @@ mod tests {
     fn test_simple_line() {
         let s = "( 1 +      8 )";
 
-        let classifier = TestClassifier {};
-        let result = tokenizer::tokenize(s, &classifier);
+        let generator = TestGenerator {};
+        let result = tokenizer::tokenize(s, &generator);
 
         let expected = vec![
             Token::new(TestToken::LParen, "(".to_owned(), true),
+            Token::new(TestToken::Space, " ".to_owned(), false),
             Token::new(TestToken::NumVal(1), "1".to_owned(), false),
+            Token::new(TestToken::Space, " ".to_owned(), false),
             Token::new(TestToken::AddOp, "+".to_owned(), false),
+            Token::new(TestToken::Space, "      ".to_owned(), false),
             Token::new(TestToken::NumVal(8), "8".to_owned(), false),
+            Token::new(TestToken::Space, " ".to_owned(), false),
             Token::new(TestToken::RParen, ")".to_owned(), false),
         ];
 
-        assert!(
-            expected == result,
+        assert_eq!(
+            expected, result,
             "expected: {:?} actual: {:?}",
-            expected,
-            result
+            expected, result
         );
     }
 }
