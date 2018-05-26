@@ -16,3 +16,20 @@ You can see that an indentation is automatically added after a '.sh' header.
 .br
 .sp
 More text.
+
+.SH "SYNOPSIS"
+.sp
+.nf
+some nofill text
+on a different line
+etc
+.fi
+.sp
+.SH "NEXT HEADER"
+.nf
+some more nf text
+one more line
+.fi
+.SH "ANOTHER HEADER"
+this text isnt nofill at all
+.SH "ONE LAST ONE"

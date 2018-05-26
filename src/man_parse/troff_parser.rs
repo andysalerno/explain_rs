@@ -630,7 +630,9 @@ where
             // output the subheader with zero indent in bold
             self.term_writer.zero_margin();
             self.term_writer.zero_indent();
+
             self.add_blank_line();
+
             self.term_writer.set_fontstyle(FontStyle::Bold);
             self.add_to_output(&arg_str);
             self.term_writer.reset_font_properties();
