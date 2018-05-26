@@ -1,5 +1,7 @@
 extern crate term_size;
-use man_parse::font_style::{FontStyle, FontStyleState};
+
+use man_parse::term_writer::font_style::{FontStyle, FontStyleState};
+use man_parse::term_writer::line_info::{LengthRule, LineInfo};
 use std::cmp;
 
 const DEFAULT_LINE_LENGTH: usize = 80;
@@ -48,7 +50,7 @@ pub struct TroffTermWriter {
 
     /// The maximum length in characters of a line, before it is wrapped.
     /// Margin and indent count towards this limit.
-    line_length: usize,
+    max_line_length: usize,
 
     /// stack to track indentation scopes
     /// TODO: redundant with prev_indent?
@@ -60,13 +62,13 @@ pub struct TroffTermWriter {
 
     /// The length of the current line being written.
     /// When this exceeds line_length, we will wrap.
-    cur_line_len: usize,
+    cur_line_info: LineInfo,
 }
 
 impl TroffTermWriter {
     pub fn new() -> Self {
         let mut tw: Self = Default::default();
-        tw.line_length = term_width();
+        tw.max_line_length = term_width();
         tw
     }
 
@@ -139,7 +141,7 @@ impl TroffTermWriter {
         }
 
         // TODO: need to not count zero-width chars (and count >1 width chars?)
-        if self.cur_line_len + text.len() > self.line_length {
+        if self.cur_line_info.len(LengthRule::Everything) + text.len() > self.max_line_length {
             self.add_linebreak();
 
             if text == SPACE {
@@ -147,7 +149,7 @@ impl TroffTermWriter {
             }
         }
 
-        self.cur_line_len += text.len();
+        self.cur_line_info.increase_len(&text);
 
         if let Some(stylized) = self.font_style.stylize_text(text) {
             self.output_buf.push_str(&stylized);
@@ -195,12 +197,21 @@ impl TroffTermWriter {
     pub fn add_linebreak(&mut self) {
         self.output_buf.push_str(LINEBREAK);
 
-        self.cur_line_len = 0;
+        self.cur_line_info.reset();
 
         for _ in 0..self.text_start_pos() {
             self.add_to_buf(SPACE);
         }
     }
+
+    pub fn is_curline_whitespace_only(&self) -> bool {
+        self.cur_line_info.len(LengthRule::NonWhitespace) == 0
+    }
+
+    /// The length of the current line (including whitespace)
+    // pub fn cur_line_len(&self) -> usize {
+    //     self.cur_line_info.len(LengthRule::IncludeWhitespace)
+    // }
 
     fn text_start_pos(&self) -> usize {
         self.margin + self.indent

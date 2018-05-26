@@ -1,6 +1,6 @@
-use man_parse::font_style::FontStyle;
 use man_parse::man_section::ManSection;
-use man_parse::troff_term_writer::TroffTermWriter;
+use man_parse::term_writer::font_style::FontStyle;
+use man_parse::term_writer::troff_term_writer::TroffTermWriter;
 use man_parse::troff_token_generator::TroffToken;
 use simple_parser::token::Token;
 
@@ -70,8 +70,11 @@ where
             return;
         };
 
-        if self.term_writer.is_nofill() && tok.class == TroffToken::TextWord && tok.starts_line {
-            self.add_linebreak();
+        if self.term_writer.is_nofill() && tok.starts_line {
+            match tok.class {
+                TroffToken::TextWord | TroffToken::Whitespace => self.add_linebreak_single(),
+                _ => {}
+            }
         }
 
         if tok.class == TroffToken::Macro {
@@ -205,14 +208,14 @@ where
 
         // output the tag flush-left on a new line
         self.term_writer.zero_indent();
-        self.add_linebreak();
+        self.add_linebreak_single();
         self.consume_spaces();
         self.parse_line();
 
         // now parse the paragraph line
         self.term_writer.set_indent(paragraph_indent);
         self.term_writer.store_indent();
-        self.add_linebreak();
+        self.add_linebreak_single();
         self.parse_line();
     }
 
@@ -252,7 +255,7 @@ where
         }
 
         // start paragraph on newline
-        self.add_linebreak();
+        self.add_linebreak_single();
 
         // parse the paragraph
         self.parse_line();
@@ -282,7 +285,7 @@ where
 
         // indent value is then reset to default
         self.term_writer.default_indent();
-        self.add_linebreak();
+        self.add_linebreak_single();
     }
 
     /// decreases the margin by a certain depth
@@ -467,7 +470,7 @@ where
     /// Begin no-fill mode, and add a linebreak.
     fn parse_nf(&mut self) {
         self.consume();
-        //self.add_linebreak();
+        self.add_linebreak_single();
         self.term_writer.enable_nofill();
     }
 
@@ -480,7 +483,7 @@ where
     /// Adds a linebreak.
     fn parse_br(&mut self) {
         self.consume();
-        self.add_linebreak();
+        self.add_linebreak_single();
     }
 
     /// Parses a backslash, which escapes some value.
@@ -488,8 +491,6 @@ where
     /// A more complicated example is '\fBHello', which
     /// prints 'Hello' in bold.
     fn parse_backslash(&mut self) {
-        let backslash_starts_line = self.current_token().unwrap().starts_line;
-
         self.consume_val("\\");
 
         if let Some(tok) = self.current_token() {
@@ -497,10 +498,6 @@ where
                 "-" => self.parse_hyphen(),
                 "(" => self.parse_special_character(),
                 "f" => {
-                    if backslash_starts_line {
-                        self.add_to_output(SPACE);
-                    }
-
                     self.parse_font_format();
 
                     if let Some(next_tok) = self.current_token() {
@@ -599,8 +596,10 @@ where
             }
         }
 
-        for _ in 0..linebreaks {
-            self.add_linebreak();
+        if !self.term_writer.is_curline_whitespace_only() {
+            for _ in 0..linebreaks {
+                self.add_linebreak();
+            }
         }
     }
 
@@ -638,7 +637,7 @@ where
 
             self.term_writer.default_margin();
             self.term_writer.zero_indent();
-            self.add_linebreak();
+            self.add_linebreak_single();
         }
     }
 
@@ -726,12 +725,31 @@ where
         self.parse_section.is_none() || self.parse_section == self.current_section
     }
 
+    /// Add a single completely blank line (i.e. 2 newlines).
     fn add_blank_line(&mut self) {
         for _ in 0..2 {
             self.add_linebreak();
         }
     }
 
+    /// Adds a linebreak, but only if the current line has length > 0.
+    /// Some macros, such as .sp or .br, can never result in more than
+    /// one blank line in a row.  I.e., the following:
+    /// Hello
+    /// .br
+    /// .br
+    /// world
+    ///
+    /// Must result in this output:
+    /// Hello
+    /// world
+    fn add_linebreak_single(&mut self) {
+        if !self.term_writer.is_curline_whitespace_only() {
+            self.add_linebreak();
+        }
+    }
+
+    /// Add a single linebreak (i.e. a newline \\n)
     fn add_linebreak(&mut self) {
         if self.section_matches() {
             self.term_writer.add_linebreak();
