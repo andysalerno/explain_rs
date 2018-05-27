@@ -166,7 +166,9 @@ where
         self.term_writer.zero_indent();
         self.term_writer.reset_font_properties();
 
-        self.add_linebreak_single();
+        if !self.term_writer.is_curline_whitespace_only() {
+            self.add_blank_line();
+        }
     }
 
     /// .PD [Distance]

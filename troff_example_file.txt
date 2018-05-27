@@ -33,3 +33,12 @@ one more line
 .SH "ANOTHER HEADER"
 this text isnt nofill at all
 .SH "ONE LAST ONE"
+This is some text.
+.PP
+The PP macro always adds a full blank line (two newlines)
+like you are seeing here.
+
+However, when it appears after a header:
+.SH "SOME HEADER"
+.PP
+It only produces a single newline, with no empty verticle space.
