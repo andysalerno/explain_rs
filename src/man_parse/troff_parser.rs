@@ -174,7 +174,6 @@ where
     /// .PD [Distance]
     /// Sets paragraph distance.
     /// If no argument is provided, default to 0.
-    /// TODO: I think the implementation is wrong here??
     fn parse_pd(&mut self) {
         self.consume_val(".PD");
 
@@ -633,7 +632,11 @@ where
             self.term_writer.zero_margin();
             self.term_writer.zero_indent();
 
-            self.add_blank_line();
+            if !self.term_writer.is_curline_whitespace_only() {
+                self.add_blank_line();
+            } else {
+                self.add_linebreak();
+            }
 
             self.term_writer.set_fontstyle(FontStyle::Bold);
             self.add_to_output(&arg_str);
