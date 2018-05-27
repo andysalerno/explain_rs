@@ -166,7 +166,7 @@ where
         self.term_writer.zero_indent();
         self.term_writer.reset_font_properties();
 
-        self.add_blank_line();
+        self.add_linebreak_single();
     }
 
     /// .PD [Distance]
