@@ -239,7 +239,6 @@ where
         let marker_arg = self.parse_macro_arg();
         for tok in marker_arg {
             self.add_to_output(&tok.value);
-            self.add_to_output(SPACE);
         }
 
         self.consume_spaces();
@@ -285,7 +284,8 @@ where
         self.term_writer.increase_margin(margin_increase);
 
         // indent value is then reset to default
-        self.term_writer.default_indent();
+        self.term_writer.set_indent(0);
+        //self.term_writer.default_indent();
         self.add_linebreak_single();
     }
 
@@ -752,7 +752,11 @@ where
     /// world
     fn add_linebreak_single(&mut self) {
         if !self.term_writer.is_curline_whitespace_only() {
+            // if there was already a line break, we don't add another...
             self.add_linebreak();
+        } else {
+            // ... however, if the indent/margin has changed, we do want to add that.
+            self.term_writer.set_whitespace_to_startpos();
         }
     }
 

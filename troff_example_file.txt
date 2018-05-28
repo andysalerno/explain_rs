@@ -42,3 +42,16 @@ However, when it appears after a header:
 .SH "SOME HEADER"
 .PP
 It only produces a single newline, with no empty verticle space.
+
+.SH "Paragraph Indentation"
+When we open a paragraph with the pp tag:
+.PP
+This is what happens.
+
+When we indent using .rs 4:
+.RS 4
+This is what happens.
+
+When we pop with .re:
+.RE
+This is what happens.

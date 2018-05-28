@@ -9,7 +9,7 @@ const RIGHT_MARGIN_LENGTH: usize = 8;
 const MIN_LINE_LENGTH: usize = 80;
 
 const DEFAULT_LEFT_MARGIN: usize = 7;
-const DEFAULT_PARAGRAPH_INDENT: usize = 0;
+const DEFAULT_PARAGRAPH_INDENT: usize = 7;
 
 const LINEBREAK: &str = "\n";
 const SPACE: &str = " ";
@@ -199,7 +199,31 @@ impl TroffTermWriter {
 
         self.cur_line_info.reset();
 
-        for _ in 0..self.text_start_pos() {
+        self.set_whitespace_to_startpos();
+    }
+
+    /// Increase the whitespace at the beginning of the current line
+    /// until it reaches the current start position, as determined by
+    /// indentation and margin.
+    ///
+    /// Note: This method will *only increase*, if the proper length is
+    /// LESS than the current whitespace length, nothing will happen.
+    pub fn set_whitespace_to_startpos(&mut self) {
+        assert!(
+            self.is_curline_whitespace_only(),
+            "can't set line to startpos if it already has non-whitespace text"
+        );
+
+        let text_start_pos = self.text_start_pos();
+        let count_whitespace = self.cur_line_info.len(LengthRule::Whitespace);
+
+        if count_whitespace > text_start_pos {
+            return;
+        }
+
+        let difference = text_start_pos - count_whitespace;
+
+        for _ in 0..difference {
             self.add_to_buf(SPACE);
         }
     }
