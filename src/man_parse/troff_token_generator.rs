@@ -1,5 +1,6 @@
-// implementing tokenization logic for a very small subset of Troff
-
+///
+/// implementing tokenization logic for a very small subset of Troff
+///
 use simple_parser::token::{Token, TokenClass};
 use simple_parser::token_generator::TokenGenerator;
 
@@ -56,11 +57,12 @@ impl TokenGenerator<TroffToken> for TroffTokenGenerator {
 
         let mut starts_line = starts_line;
         let mut char_iter = word.chars().enumerate();
-        let mut base_index: usize = 0;
+
+        let mut base_index: usize = 0; // index of starting position of current token within word
 
         while let Some((c_index, c)) = char_iter.next() {
             if let Some(special_class) = try_match_special(&c) {
-                // Some chars are special chars that are tokens on their own
+                // Encountered special char. Some chars are special chars that are tokens on their own,
                 // and appear in the middle of words, so in this case we split the word into multiple tokens.
                 if c_index > base_index {
                     // everything before the split is a token on its own
@@ -77,8 +79,8 @@ impl TokenGenerator<TroffToken> for TroffTokenGenerator {
                 starts_line = false;
                 base_index = c_index + 1;
 
-                // after a '\' is always an escaped character
                 if special_class == TroffToken::Backslash {
+                    // after a '\' is always an escaped character
                     let next = {
                         if let Some(n) = char_iter.next() {
                             n
@@ -87,22 +89,45 @@ impl TokenGenerator<TroffToken> for TroffTokenGenerator {
                         }
                     };
 
-                    let (next_index, command_char) = next;
+                    let (next_index, escaped_char) = next;
 
-                    let escaped =
-                        Token::new(TroffToken::EscapeCommand, command_char.to_string(), false);
+                    if escaped_char == '(' {
+                        // '(' is a special case; it isn't a command,
+                        // instead, it is always followed by two other chars,
+                        // and they all encode to some special new character.
+                        // e.g., \(*p encodes to π
 
-                    tokens.push(escaped);
+                        // the '('
+                        let escaped_char_tok =
+                            Token::new(TroffToken::EscapeCommand, escaped_char.to_string(), false);
+                        tokens.push(escaped_char_tok);
+
+                        // the part following '(', like 'cq'
+                        let endpoint = next_index + 3;
+                        let encoding = &word[next_index + 1..endpoint];
+                        let encoded_tok = Token::new(TroffToken::TextWord, encoding.into(), false);
+                        tokens.push(encoded_tok);
+                        base_index = endpoint;
+
+                        continue;
+                    }
+
+                    let escaped_tok =
+                        Token::new(TroffToken::EscapeCommand, escaped_char.to_string(), false);
+
+                    tokens.push(escaped_tok);
                     base_index = next_index + 1;
 
                     // after the escaped token, we might now have an argument
                     // i.e., '\fB' takes arg 'B'
-                    if !command_has_args(command_char) {
+                    if !command_has_args(escaped_char) {
                         continue;
                     }
 
+                    let possible_args = &word[next_index + 1..];
+
+                    let args = get_escaped_args(possible_args);
                     let mut advance_count = 0;
-                    let args = get_escaped_args(&word[next_index + 1..]);
 
                     for arg in args {
                         advance_count += arg.value.len();
@@ -169,6 +194,7 @@ fn get_escaped_args(word: &str) -> Vec<Token<TroffToken>> {
     // (word contains content after \m, in this example)
     match word.chars().nth(0) {
         Some('(') => {
+            // todo: need to fix something here
             let open_tok = Token::new(TroffToken::ArgOpenParen, "(".to_owned(), false);
             v.push(open_tok);
 

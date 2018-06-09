@@ -91,6 +91,7 @@ where
             assert_eq!(tok.class, TroffToken::Macro);
             match tok.value.as_str() {
                 ".SH" => self.parse_sh(),
+                ".SS" => self.parse_ss(),
                 ".sp" => self.parse_sp(),
                 ".br" => self.parse_br(),
                 ".nf" => self.parse_nf(),
@@ -295,8 +296,8 @@ where
 
         let decrease_arg = self.parse_macro_arg().into_iter().next();
 
-        let pops = if decrease_arg.is_some() {
-            decrease_arg.unwrap().value.parse::<usize>().unwrap()
+        let pops = if let Some(tok) = decrease_arg {
+            tok.value.parse::<usize>().unwrap()
         } else {
             // if no arg provided, just pop once
             1
@@ -306,7 +307,8 @@ where
             self.term_writer.pop_margin();
         }
 
-        self.term_writer.default_indent();
+        //self.term_writer.default_indent();
+        self.term_writer.zero_indent();
         self.term_writer.store_indent();
     }
 
@@ -315,6 +317,7 @@ where
     /// is to unify arguments under this
     /// since args may be contained in quotes
     /// TODO: can I return a single String, instead of a Vec?
+    //fn parse_macro_arg(&mut self) -> Vec<I::Item> {
     fn parse_macro_arg(&mut self) -> Vec<I::Item> {
         self.consume_spaces();
 
@@ -646,6 +649,24 @@ where
             self.term_writer.zero_indent();
             self.add_linebreak_single();
         }
+    }
+
+    /// Parse "sub section" macro
+    /// Similar to "sub header" .SH,
+    /// except doesn't print flush-left.
+    fn parse_ss(&mut self) {
+        self.consume_val(".SS");
+
+        //self.term_writer.zero_indent();
+        self.add_blank_line();
+
+        let arg = self.parse_macro_arg();
+
+        self.term_writer.set_fontstyle(FontStyle::Bold);
+        for tok in arg {
+            self.add_to_output(&tok.value);
+        }
+        self.term_writer.reset_font_properties();
     }
 
     /// we aren't smart enough to evaluate expressions
