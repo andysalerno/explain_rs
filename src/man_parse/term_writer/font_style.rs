@@ -14,6 +14,7 @@ pub enum FontStyle {
     Bold,
     Italic,
     Underlined,
+    Regular,
 }
 
 const SPACE: &str = " ";
@@ -24,6 +25,14 @@ impl FontStyleState {
             FontStyle::Bold => self.bold = val,
             FontStyle::Italic => self.italic = val,
             FontStyle::Underlined => self.underlined = val,
+
+            // Regular is a special case, you can't toggle it.
+            // It simply resets everything else to false.
+            FontStyle::Regular => {
+                self.bold = false;
+                self.italic = false;
+                self.underlined = false;
+            }
         }
     }
 

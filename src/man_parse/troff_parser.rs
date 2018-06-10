@@ -104,6 +104,7 @@ where
                 ".BI" => self.parse_bi(),
                 ".IP" => self.parse_ip(),
                 ".RS" => self.parse_rs(),
+                ".RB" => self.parse_rb(),
                 ".RE" => self.parse_re(),
                 ".if" => self.parse_if(),
                 ".PP" | ".LP" | ".P" => self.parse_p(),
@@ -153,7 +154,18 @@ where
         }
     }
 
-    /// an empty line in troff generates an empty output line
+    /// Parse a literal textword, as-is.
+    /// Use parse_word() to parse macros, escapes, etc.
+    fn parse_textword(&mut self) {
+        let cur_tok = self.current_token().unwrap();
+        self.add_to_output(&cur_tok.value);
+        self.consume();
+
+        // TODO: this instead
+        // self.consume_class(TroffToken::TextWord);
+    }
+
+    /// Parses an empty line, which parses as a blank line.
     fn parse_empty_line(&mut self) {
         self.consume_class(TroffToken::EmptyLine);
         self.add_blank_line();
@@ -330,7 +342,7 @@ where
             }
 
             if tok.class == TroffToken::DoubleQuote {
-                return self.parse_within_quotes();
+                return self.get_within_quotes();
             } else {
                 let result = vec![tok];
                 self.consume();
@@ -345,7 +357,7 @@ where
     /// return a vector of every token between
     /// this doublequote and an ending doublequote on the same line.
     /// (returns early if a newline is encountered before a closing doublequote)
-    fn parse_within_quotes(&mut self) -> Vec<I::Item> {
+    fn get_within_quotes(&mut self) -> Vec<I::Item> {
         self.consume_class(TroffToken::DoubleQuote);
 
         let mut result = Vec::new();
@@ -393,75 +405,59 @@ where
     /// Alternates between italic and regular.
     fn parse_ir(&mut self) {
         self.consume_val(".IR");
+        self.parse_alternation(FontStyle::Italic, FontStyle::Regular);
+    }
 
-        let mut italic = true;
+    /// Alternates between regular and bold.
+    fn parse_rb(&mut self) {
+        self.consume_val(".RB");
+        self.parse_alternation(FontStyle::Regular, FontStyle::Bold);
+    }
+
+    /// Generic logic for parsing a macro that alternates between two font styles.
+    /// Examples:
+    /// .RB alternates between regular and bold
+    /// .IR alternates between italic and regular.
+    fn parse_alternation(&mut self, first: FontStyle, second: FontStyle) {
+        let mut on_first = true;
+
+        self.consume_spaces();
 
         while let Some(tok) = self.current_token() {
             if tok.starts_line {
-                break;
+                // these macros only operate on one line.
+                return;
             }
             if tok.class == TroffToken::Whitespace {
-                self.parse_textword();
+                // only on whitespace do we alternate between styles
+                on_first = !on_first;
+                self.consume_spaces();
                 continue;
             }
 
-            if italic {
-                self.term_writer.set_fontstyle(FontStyle::Underlined);
-                self.parse_textword();
-                self.term_writer.unset_fontstyle(FontStyle::Underlined);
-            } else {
-                self.parse_textword();
-            }
+            let cur_fontstyle = if on_first { first } else { second };
 
-            italic = !italic;
+            self.term_writer.set_fontstyle(cur_fontstyle);
+
+            if tok.class == TroffToken::DoubleQuote {
+                // quotes can group together tokens that will all have the same styling
+                let tok_group = self.get_within_quotes();
+                for t in tok_group {
+                    // todo: probably have to skip spaces
+                    self.add_to_output(&t.value);
+                }
+            } else {
+                // otherwise, we just parse a single word
+                self.parse_word();
+            }
+            self.term_writer.unset_fontstyle(cur_fontstyle);
         }
     }
 
     /// Alternates between bold and italic.
-    /// TODO: create "parse_alternating(a: FontStyle, b: FontStyle)"
     fn parse_bi(&mut self) {
         self.consume_val(".BI");
-
-        let mut bold = true;
-        let mut in_quote = false;
-
-        while let Some(tok) = self.current_token() {
-            if tok.starts_line {
-                break;
-            }
-            if tok.class == TroffToken::Whitespace {
-                self.parse_textword();
-                if !in_quote {
-                    bold = !bold;
-                }
-                continue;
-            }
-            if tok.class == TroffToken::Backslash {
-                in_quote = !in_quote;
-            }
-
-            if bold {
-                self.term_writer.set_fontstyle(FontStyle::Bold);
-                self.parse_word();
-                self.term_writer.unset_fontstyle(FontStyle::Bold);
-            } else {
-                self.term_writer.set_fontstyle(FontStyle::Underlined);
-                self.parse_word();
-                self.term_writer.unset_fontstyle(FontStyle::Underlined);
-            }
-        }
-    }
-
-    fn parse_textword(&mut self) {
-        let cur_tok = self.current_token().unwrap();
-        self.add_to_output(&cur_tok.value);
-        self.consume();
-
-        // if let Some(next_tok) = self.current_token() {
-        //     if next_tok.class != TroffToken::Whitespace {
-        //         self.add_to_output(SPACE);
-        //     }
-        // }
+        self.parse_alternation(FontStyle::Bold, FontStyle::Italic);
     }
 
     fn parse_whitespace(&mut self) {

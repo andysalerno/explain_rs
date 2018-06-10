@@ -55,3 +55,7 @@ This is what happens.
 When we pop with .re:
 .RE
 This is what happens.
+
+.RB This alternates between regular and bold.
+.RB This is the same, but  with      lots    of     spaces.
+.B This is just plain old bold.
