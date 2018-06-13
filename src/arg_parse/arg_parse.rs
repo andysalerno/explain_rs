@@ -11,6 +11,7 @@ pub struct ExplainArgs {
     pub section: Option<ManSection>,
 }
 
+// Optional.  Which section should we parse through?
 const SHORT_SECTION_ARG: &str = "-s=";
 const LONG_SECTION_ARG: &str = "--section=";
 
@@ -19,12 +20,12 @@ pub fn argparse() -> ExplainArgs {
 
     if args.len() < 2 {
         print_usage();
-        panic!("improperly invoked");
+        ::std::process::exit(1);
     }
 
     let mut result = ExplainArgs::default();
 
-    let mut args_iter = args.iter();
+    let mut args_iter = args.into_iter();
 
     // first arg is always our calling path, ignore it
     args_iter.next();

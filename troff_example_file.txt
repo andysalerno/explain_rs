@@ -59,3 +59,9 @@ This is what happens.
 .RB This alternates between regular and bold.
 .RB This is the same, but  with      lots    of     spaces.
 .B This is just plain old bold.
+
+.SH "THIS TEXT IS IN QUOTES"
+This is a sample body.
+
+.SH THIS TEXT IS NOT IN QUOTES
+Another sample body.

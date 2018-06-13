@@ -1,3 +1,7 @@
+///
+/// A tool for measuring the length of text passed to it.
+///
+
 #[derive(Default)]
 pub struct LineInfo {
     whitespace_len: usize,
@@ -37,6 +41,12 @@ impl LineInfo {
         }
     }
 
+    /// True if our length consists of only whitespace (or nothing at all).
+    pub fn is_whitespace_only(&self) -> bool {
+        self.nonwhitespace_len == 0
+    }
+
+    /// Reset all data so the lengths are all zero.
     pub fn reset(&mut self) {
         self.whitespace_len = 0;
         self.nonwhitespace_len = 0;

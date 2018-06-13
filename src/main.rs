@@ -37,10 +37,11 @@ fn main() {
         }
     }
 
-    let mut parser = match args.section {
-        None => TroffParser::new(),
-        Some(s) => TroffParser::for_section(s),
-    };
+    let mut parser = TroffParser::new().with_args(args.command_args);
+
+    if let Some(section) = args.section {
+        parser = parser.for_section(section);
+    }
 
     parser.parse(tokenized.iter());
 
@@ -49,7 +50,7 @@ fn main() {
         println!("-----------------");
     }
 
-    println!("{}", parser.section_text());
+    println!("{}", parser.result_text());
 }
 
 fn get_manpage_path(program_name: &str) -> String {

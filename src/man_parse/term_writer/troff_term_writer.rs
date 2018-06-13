@@ -86,6 +86,7 @@ impl TroffTermWriter {
         self.stored_indent
     }
 
+    /// Store the current indent. Can be retrieved via stored_or_default_indent().
     pub fn store_indent(&mut self) {
         self.stored_indent = Some(self.indent);
     }
@@ -119,16 +120,12 @@ impl TroffTermWriter {
 
     /// Enables a FontStyle, such as Bold
     pub fn set_fontstyle(&mut self, s: FontStyle) {
-        self.set_fontstyle_value(s, true);
+        self.font_style.set_fontstyle_value(s, true);
     }
 
     /// Disables a FontStyle, such as Bold
     pub fn unset_fontstyle(&mut self, s: FontStyle) {
-        self.set_fontstyle_value(s, false);
-    }
-
-    fn set_fontstyle_value(&mut self, s: FontStyle, val: bool) {
-        self.font_style.set_fontstyle_value(s, val);
+        self.font_style.set_fontstyle_value(s, false);
     }
 
     /// Add some text to the output buffer, inserting linebreaks
@@ -174,11 +171,10 @@ impl TroffTermWriter {
         self.indent = DEFAULT_PARAGRAPH_INDENT;
     }
 
+    /// Retrieve the latest stored indent value,
+    /// or the default indent value if none was previously stored.
     pub fn stored_or_default_indent(&self) -> usize {
-        match self.stored_indent() {
-            Some(indent) => indent,
-            None => DEFAULT_PARAGRAPH_INDENT,
-        }
+        self.stored_indent().unwrap_or(DEFAULT_PARAGRAPH_INDENT)
     }
 
     /// Resets the margin offset to 0,
@@ -196,9 +192,7 @@ impl TroffTermWriter {
 
     pub fn add_linebreak(&mut self) {
         self.output_buf.push_str(LINEBREAK);
-
         self.cur_line_info.reset();
-
         self.set_whitespace_to_startpos();
     }
 
@@ -229,7 +223,7 @@ impl TroffTermWriter {
     }
 
     pub fn is_curline_whitespace_only(&self) -> bool {
-        self.cur_line_info.len(LengthRule::NonWhitespace) == 0
+        self.cur_line_info.is_whitespace_only()
     }
 
     /// The length of the current line (including whitespace)

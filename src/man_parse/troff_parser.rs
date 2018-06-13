@@ -27,6 +27,9 @@ where
 
     /// functionality for writing output and styling text
     term_writer: TroffTermWriter,
+
+    /// The arguments to search for in the man page, if any.
+    args: Option<Vec<String>>,
 }
 
 impl<'a, I> TroffParser<'a, I>
@@ -41,15 +44,18 @@ where
             before_section_text: Default::default(),
             parse_section: Default::default(),
             term_writer: TroffTermWriter::new(),
+            args: Default::default(),
         }
     }
 
-    /// TODO: idiomatically, this should take "self",
-    /// and be invoked like "Parser::new().for_section(...)"
-    pub fn for_section(section: ManSection) -> Self {
-        let mut p = Self::new();
-        p.parse_section = Some(section);
-        p
+    pub fn for_section(mut self, section: ManSection) -> Self {
+        self.parse_section = Some(section);
+        self
+    }
+
+    pub fn with_args(mut self, args: Vec<String>) -> Self {
+        self.args = Some(args);
+        self
     }
 
     pub fn parse(&mut self, tokens: I) {
@@ -213,8 +219,8 @@ where
         // optional argument specifies indentation of paragraph text
         let paragraph_indent = {
             let indent_arg = self.parse_macro_arg().into_iter().next();
-            if indent_arg.is_some() {
-                indent_arg.unwrap().value.parse::<usize>().unwrap()
+            if let Some(arg) = indent_arg {
+                arg.value.parse::<usize>().unwrap()
             } else {
                 self.term_writer.stored_or_default_indent()
             }
@@ -287,8 +293,8 @@ where
         let margin_increase = {
             let indent_arg = self.parse_macro_arg().into_iter().next();
 
-            if indent_arg.is_some() {
-                indent_arg.unwrap().value.parse::<usize>().unwrap()
+            if let Some(arg) = indent_arg {
+                arg.value.parse::<usize>().unwrap()
             } else {
                 self.term_writer.stored_or_default_indent()
             }
@@ -296,9 +302,8 @@ where
 
         self.term_writer.increase_margin(margin_increase);
 
-        // indent value is then reset to default
+        // indent value is then reset to 0
         self.term_writer.set_indent(0);
-        //self.term_writer.default_indent();
         self.add_linebreak_single();
     }
 
@@ -325,11 +330,8 @@ where
     }
 
     /// Parse the next arg for a macro.
-    /// Not used everywhere, but ultimate goal
-    /// is to unify arguments under this
-    /// since args may be contained in quotes
-    /// TODO: can I return a single String, instead of a Vec?
-    //fn parse_macro_arg(&mut self) -> Vec<I::Item> {
+    /// Note that a single arg can span multiple whitespaces,
+    /// if wrapped in a quote like "this is one arg".  It would be four without the quotes.
     fn parse_macro_arg(&mut self) -> Vec<I::Item> {
         self.consume_spaces();
 
@@ -610,12 +612,15 @@ where
     fn parse_sh(&mut self) {
         self.consume_val(".SH");
 
-        let sh_args = self.parse_macro_arg();
-
         let mut arg_str = String::new();
 
-        for arg in sh_args {
-            arg_str.push_str(&arg.value);
+        loop {
+            let arg = self.parse_macro_arg();
+            if arg.len() == 0 {
+                break;
+            }
+
+            arg.into_iter().for_each(|a| arg_str.push_str(&a.value));
         }
 
         if self.parse_section.is_some() {
@@ -741,7 +746,7 @@ where
         &self.before_section_text
     }
 
-    pub fn section_text(&self) -> &str {
+    pub fn result_text(&self) -> &str {
         self.term_writer.buf()
     }
 
