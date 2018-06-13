@@ -164,6 +164,7 @@ where
     /// Use parse_word() to parse macros, escapes, etc.
     fn parse_textword(&mut self) {
         let cur_tok = self.current_token().unwrap();
+
         self.add_to_output(&cur_tok.value);
         self.consume();
 
@@ -257,6 +258,7 @@ where
         // first optional arg is the marker (aka tag), it is printed flush with the margin
         let marker_arg = self.parse_macro_arg();
         for tok in marker_arg {
+            // todo: we should be calling parse_textword on these somehow...
             self.add_to_output(&tok.value);
         }
 
@@ -790,6 +792,11 @@ where
     }
 
     fn add_to_output(&mut self, s: &str) {
+        // this might have to be where we do all the work
+        // if s.starts_with("-") && self.term_writer.is_curline_whitespace_only() {
+        //     println!("found this: {}", s);
+        // }
+
         if self.section_matches() {
             self.term_writer.add_to_buf(s);
         }

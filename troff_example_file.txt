@@ -1,10 +1,10 @@
-'. This is a comment.  Test the output of this
-'. page with "groff [filename] -man -T utf8 | less".
+'. Test the output of this page with "groff [filename] -man -T utf8 | less".
+'. This is a comment.
 .TH "EXAMPLE"
 This is a blank text line.
 This is another text line.
-This is a text line
-that is split across two lines.
+This is a text line that is 
+split across two lines.
 
 .SH "MAN-STYLE HEADER"
 This is a line directly underneath the header above.
