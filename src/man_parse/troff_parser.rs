@@ -89,6 +89,9 @@ where
             self.parse_macro();
         } else {
             self.parse_line();
+            if !self.term_writer.is_curline_whitespace_only() {
+                self.add_to_output(SPACE);
+            }
         }
     }
 
@@ -200,7 +203,17 @@ where
         let mut indent = 0;
 
         if let Some(tok) = self.current_token() {
-            if !tok.starts_line {
+            if !tok.starts_line && tok
+                .value
+                .chars()
+                .filter(|t| !t.is_whitespace())
+                .next()
+                .is_some()
+            {
+                match tok.value.parse::<usize>() {
+                    Ok(num) => indent = num,
+                    Err(s) => panic!("{}, tok: {}", s, tok.value),
+                }
                 indent = tok.value.parse::<usize>().unwrap();
                 self.consume();
             }
@@ -430,6 +443,7 @@ where
         while let Some(tok) = self.current_token() {
             if tok.starts_line {
                 // these macros only operate on one line.
+                self.add_to_output(SPACE);
                 return;
             }
             if tok.class == TroffToken::Whitespace {

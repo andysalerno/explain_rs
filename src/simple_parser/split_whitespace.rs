@@ -23,12 +23,15 @@ impl<'a> Iterator for SplitWhitespaceInclusive<'a> {
 
         let result_start = self.cur_idx;
         let mut result_end = result_start + 1;
+        let mut cur_idx = 0;
 
         let mut whitespace_mode = false;
         let mut whitespace_char = '\0';
 
-        for (index, c) in self.content[result_start..].chars().enumerate() {
-            if index == 0 {
+        for c in self.content[result_start..].chars() {
+            cur_idx = cur_idx + c.len_utf8();
+
+            if cur_idx == c.len_utf8() {
                 if c.is_whitespace() {
                     whitespace_mode = true;
                     whitespace_char = c;
@@ -40,7 +43,7 @@ impl<'a> Iterator for SplitWhitespaceInclusive<'a> {
                 || (!c.is_whitespace() && !whitespace_mode);
 
             if found_continuation {
-                result_end = result_start + index + 1;
+                result_end = result_start + cur_idx;
             } else {
                 break;
             }
@@ -83,7 +86,7 @@ mod tests {
         let result: Vec<&str> = SplitWhitespaceInclusive::new(my_str).collect();
 
         let expected = vec![
-            "Hello,", "   ", "this", " ", "is", " ", "my", "    ", "string!"
+            "Hello,", "   ", "this", " ", "is", " ", "my", "    ", "string!",
         ];
 
         assert_eq!(result, expected);
@@ -107,7 +110,7 @@ mod tests {
         let result: Vec<&str> = SplitWhitespaceInclusive::new(my_str).collect();
 
         let expected = vec![
-            "Hello,", "\n", "this", " ", "is", " ", "my", "\n", " ", "string!"
+            "Hello,", "\n", "this", " ", "is", " ", "my", "\n", " ", "string!",
         ];
 
         assert_eq!(result, expected);
@@ -139,13 +142,36 @@ mod tests {
     }
 
     #[test]
+    fn split_understands_wide_chars() {
+        let my_str = "Originally written by Hrvoje Nikšić <hniksic@xemacs.org>.";
+
+        let result: Vec<&str> = SplitWhitespaceInclusive::new(my_str).collect();
+
+        let expected = vec![
+            "Originally",
+            " ",
+            "written",
+            " ",
+            "by",
+            " ",
+            "Hrvoje",
+            " ",
+            "Nikšić",
+            " ",
+            "<hniksic@xemacs.org>.",
+        ];
+
+        assert_eq!(result, expected);
+    }
+
+    #[test]
     fn trait_works() {
         let my_str = "This is a test of the trait!";
         let iterator = my_str.split_whitespace_inclusive();
         let result: Vec<&str> = iterator.collect();
 
         let expected = vec![
-            "This", " ", "is", " ", "a", " ", "test", " ", "of", " ", "the", " ", "trait!"
+            "This", " ", "is", " ", "a", " ", "test", " ", "of", " ", "the", " ", "trait!",
         ];
 
         assert_eq!(result, expected);

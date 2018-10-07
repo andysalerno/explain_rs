@@ -1,7 +1,3 @@
-///
-/// A tool for measuring the length of text passed to it.
-///
-
 #[derive(Default)]
 pub struct LineInfo {
     whitespace_len: usize,
