@@ -214,7 +214,6 @@ where
                     Ok(num) => indent = num,
                     Err(s) => panic!("{}, tok: {}", s, tok.value),
                 }
-                indent = tok.value.parse::<usize>().unwrap();
                 self.consume();
             }
         }
@@ -339,9 +338,7 @@ where
             self.term_writer.pop_margin();
         }
 
-        //self.term_writer.default_indent();
         self.term_writer.zero_indent();
-        self.term_writer.store_indent();
     }
 
     /// Parse the next arg for a macro.
