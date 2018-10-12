@@ -65,3 +65,36 @@ This is a sample body.
 
 .SH THIS TEXT IS NOT IN QUOTES
 Another sample body.
+
+'. Here's some space to test stuff below:
+.IP "--proto <protocols>"
+Tells curl to limit what protocols it may use in the transfer. Protocols are
+evaluated left to right, are comma separated, and are each a protocol name or
+'all', optionally prefixed by zero or more modifiers. Available modifiers are:
+.RS
+.TP 3
+.B +
+Permit this protocol in addition to protocols already permitted (this is
+the default if no modifier is used).
+.TP
+.B -
+Deny this protocol, removing it from the list of protocols already permitted.
+.TP
+.B =
+Permit only this protocol (ignoring the list already permitted), though
+subject to later modification by subsequent entries in the comma separated
+list.
+.RE
+.IP
+For example:
+.RS
+.TP 15
+.B \fI--proto\fP -ftps
+uses the default protocols, but disables ftps
+.TP
+.B  \fI--proto\fP -all,https,+http
+only enables http and https
+.TP
+.B \fI--proto\fP =http,https
+also only enables http and https
+.RE
