@@ -30,6 +30,8 @@ where
 
     /// The arguments to search for in the man page, if any.
     args: Option<Vec<String>>,
+
+    debug: bool,
 }
 
 impl<'a, I> TroffParser<'a, I>
@@ -45,7 +47,13 @@ where
             parse_section: Default::default(),
             term_writer: TroffTermWriter::new(),
             args: Default::default(),
+            debug: false,
         }
+    }
+
+    pub fn enable_debug(&mut self) {
+        self.debug = true;
+        self.term_writer.enable_debug();
     }
 
     pub fn for_section(mut self, section: ManSection) -> Self {

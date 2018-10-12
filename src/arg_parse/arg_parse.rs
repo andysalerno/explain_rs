@@ -7,6 +7,7 @@ pub struct ExplainArgs {
     pub command_args: Vec<String>,
 
     pub debug: bool,
+    pub debug_visualize_margin: bool,
     pub help: bool,
     pub section: Option<ManSection>,
 }
@@ -40,8 +41,9 @@ pub fn argparse() -> ExplainArgs {
 
         // there may be optional flags provided to inform how explain should execute
         match arg.as_str() {
-            "-d" | "--debug" => result.debug = true,
             "-h" | "--help" => result.help = true,
+            "-d" | "--debug" => result.debug = true,
+            "-dM" | "--debug_visualize_margin" => result.debug_visualize_margin = true,
             s if s.starts_with(SHORT_SECTION_ARG) | s.starts_with(LONG_SECTION_ARG) => {
                 result.section = parse_section_arg(s)
             }

@@ -20,7 +20,7 @@ impl LineInfo {
     }
 
     /// Increase the line length information based on the content of the slice argument.
-    /// None: currently only the first char in the word is considered when judging between
+    /// Note: currently only the first char in the word is considered when judging between
     /// whitespace and non-whitespace, so the word is expected to contain exclusively one or the other,
     /// and not a mix.
     pub fn increase_len(&mut self, word: &str) {

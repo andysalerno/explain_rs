@@ -38,6 +38,9 @@ fn main() {
     }
 
     let mut parser = TroffParser::new().with_args(args.command_args);
+    if args.debug_visualize_margin {
+        parser.enable_debug();
+    }
 
     if let Some(section) = args.section {
         parser = parser.for_section(section);

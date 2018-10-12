@@ -63,13 +63,24 @@ pub struct TroffTermWriter {
     /// The length of the current line being written.
     /// When this exceeds line_length, we will wrap.
     cur_line_info: LineInfo,
+
+    debug: bool,
 }
 
 impl TroffTermWriter {
     pub fn new() -> Self {
         let mut tw: Self = Default::default();
         tw.max_line_length = term_width();
+        tw.debug = false;
         tw
+    }
+
+    pub fn enable_debug(&mut self) {
+        self.debug = true;
+    }
+
+    pub fn disable_debug(&mut self) {
+        self.debug = false;
     }
 
     /// Clear bold/italic/underlined properties
@@ -193,7 +204,12 @@ impl TroffTermWriter {
     pub fn add_linebreak(&mut self) {
         self.output_buf.push_str(LINEBREAK);
         self.cur_line_info.reset();
-        self.set_whitespace_to_startpos();
+
+        if !self.debug {
+            self.set_whitespace_to_startpos();
+        } else {
+            self.set_whitespace_to_startpos_debug_visualize_margin();
+        }
     }
 
     /// Increase the whitespace at the beginning of the current line
@@ -222,14 +238,33 @@ impl TroffTermWriter {
         }
     }
 
+    fn set_whitespace_to_startpos_debug_visualize_margin(&mut self) {
+        assert!(
+            self.is_curline_whitespace_only(),
+            "can't set line to startpos if it already has non-whitespace text"
+        );
+
+        let text_start_pos = self.text_start_pos();
+        let count_whitespace = self.cur_line_info.len(LengthRule::Whitespace);
+
+        if count_whitespace > text_start_pos {
+            return;
+        }
+
+        let difference = text_start_pos - count_whitespace;
+
+        for _ in 0..self.margin {
+            self.add_to_buf("M");
+        }
+
+        for _ in 0..self.indent {
+            self.add_to_buf("I");
+        }
+    }
+
     pub fn is_curline_whitespace_only(&self) -> bool {
         self.cur_line_info.is_whitespace_only()
     }
-
-    /// The length of the current line (including whitespace)
-    // pub fn cur_line_len(&self) -> usize {
-    //     self.cur_line_info.len(LengthRule::IncludeWhitespace)
-    // }
 
     fn text_start_pos(&self) -> usize {
         self.margin + self.indent
