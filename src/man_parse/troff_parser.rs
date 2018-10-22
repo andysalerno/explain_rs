@@ -335,7 +335,7 @@ where
 
         let decrease_arg = self.parse_macro_arg().into_iter().next();
 
-        let pops = if let Some(tok) = decrease_arg {
+        let mut pops = if let Some(tok) = decrease_arg {
             tok.value.parse::<usize>().unwrap()
         } else {
             // if no arg provided, just pop once
@@ -347,6 +347,7 @@ where
         }
 
         self.term_writer.zero_indent();
+        self.term_writer.clear_stored_indent();
     }
 
     /// Parse the next arg for a macro.

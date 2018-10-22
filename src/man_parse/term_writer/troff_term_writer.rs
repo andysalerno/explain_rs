@@ -88,6 +88,10 @@ impl TroffTermWriter {
         self.font_style = Default::default();
     }
 
+    pub fn indent(&self) -> usize {
+        self.indent
+    }
+
     /// Sets the indentation to 0.
     pub fn zero_indent(&mut self) {
         self.indent = 0;
@@ -100,6 +104,10 @@ impl TroffTermWriter {
     /// Store the current indent. Can be retrieved via stored_or_default_indent().
     pub fn store_indent(&mut self) {
         self.stored_indent = Some(self.indent);
+    }
+
+    pub fn clear_stored_indent(&mut self) {
+        self.stored_indent = None;
     }
 
     /// Increase the margin by some count of characters.
