@@ -156,7 +156,9 @@ impl TokenGenerator<TroffToken> for TroffTokenGenerator {
     }
 
     fn is_comment(&self, word: &str) -> bool {
-        word.starts_with("\\\"") || word.starts_with(".\\\"") || word.starts_with("\\#")
+        word.starts_with("\\\"")
+            || word.starts_with(".\\\"")
+            || word.starts_with("\\#")
             || word == "."
     }
 }
@@ -172,7 +174,7 @@ impl TokenGenerator<TroffToken> for TroffTokenGenerator {
 /// so it does not have args.
 fn command_has_args(command: char) -> bool {
     match command {
-        'f' | 'm' => true,
+        'f' | 'm' | 's' => true,
         _ => false,
     }
 }
@@ -213,6 +215,24 @@ fn get_escaped_args(word: &str) -> Vec<Token<TroffToken>> {
 
             let close_tok = Token::new(TroffToken::ArgCloseBracket, "]".to_owned(), false);
             v.push(close_tok);
+        }
+        Some('-') => {
+            // TODO: \s+(34 is allowed
+            let sign_tok = Token::new(TroffToken::CommandArg, "-".to_owned(), false);
+            v.push(sign_tok);
+
+            let num = word.chars().nth(1).unwrap().to_string();
+            let num_tok = Token::new(TroffToken::CommandArg, num, false);
+            v.push(num_tok);
+        }
+        Some('+') => {
+            // TODO: \s+(34 is allowed
+            let sign_tok = Token::new(TroffToken::CommandArg, "+".to_owned(), false);
+            v.push(sign_tok);
+
+            let num = word.chars().nth(1).unwrap().to_string();
+            let num_tok = Token::new(TroffToken::CommandArg, num, false);
+            v.push(num_tok);
         }
         Some(_) => {
             let arg = &word[0..1];
@@ -316,6 +336,56 @@ mod tests {
             expected,
             actual
         );
+    }
+
+    #[test]
+    fn test_empty_square_brackets() {
+        let sentence = "Git User Manual\\m[]";
+        let generator = TroffTokenGenerator {};
+
+        let mut actual = Vec::new();
+
+        for word in sentence.split_whitespace() {
+            let mut result = generator.generate(word, false);
+            actual.append(&mut result);
+        }
+
+        let expected = vec![
+            Token::new(TroffToken::TextWord, "Git".to_owned(), false),
+            Token::new(TroffToken::TextWord, "User".to_owned(), false),
+            Token::new(TroffToken::TextWord, "Manual".to_owned(), false),
+            Token::new(TroffToken::Backslash, "\\".to_owned(), false),
+            Token::new(TroffToken::EscapeCommand, "m".to_owned(), false),
+            Token::new(TroffToken::ArgOpenBracket, "[".to_owned(), false),
+            Token::new(TroffToken::CommandArg, "".to_owned(), false),
+            Token::new(TroffToken::ArgCloseBracket, "]".to_owned(), false),
+        ];
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn test_backslash_s() {
+        let sentence = "Manual\\fR\\m[]\\&\\s-2\\u[1]\\d\\s+2";
+        let generator = TroffTokenGenerator {};
+
+        let mut actual = Vec::new();
+
+        for word in sentence.split_whitespace() {
+            let mut result = generator.generate(word, false);
+            actual.append(&mut result);
+        }
+
+        let expected = vec![
+            Token::new(TroffToken::TextWord, "Manual".to_owned(), false),
+            Token::new(TroffToken::Backslash, "\\".to_owned(), false),
+            Token::new(TroffToken::EscapeCommand, "m".to_owned(), false),
+            Token::new(TroffToken::ArgOpenBracket, "[".to_owned(), false),
+            Token::new(TroffToken::CommandArg, "".to_owned(), false),
+            Token::new(TroffToken::ArgCloseBracket, "]".to_owned(), false),
+        ];
+
+        assert_eq!(actual, expected);
     }
 
     #[test]

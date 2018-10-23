@@ -531,8 +531,17 @@ where
                     }
                 }
                 "m" => self.parse_color_format(),
+                "s" => self.parse_point_size(),
                 _ => self.consume(),
             }
+        }
+    }
+
+    fn parse_point_size(&mut self) {
+        self.consume_val("s");
+
+        while self.current_token().unwrap().class == TroffToken::CommandArg {
+            self.consume_class(TroffToken::CommandArg);
         }
     }
 
